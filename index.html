@@ -20,17 +20,16 @@
             appId: ""
         };
         
-        // Якщо працюємо в Canvas, беремо системну конфігу, якщо на GitHub - вашу згори
         const finalConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
         const app = initializeApp(finalConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-        // ПАРАМЕТРИ ТАБЛИЦІ
-        const SPREADSHEET_ID = 'https://docs.google.com/spreadsheets/d/1_pq4ymribVOGorbZTH6D9vBt1CZwtdtLLIR6dpmgync/edit?usp=sharing'; 
+        // ПАРАМЕТРИ ТАБЛИЦІ (ВИПРАВЛЕНО: ТІЛЬКИ ID)
+        const SPREADSHEET_ID = '1_pq4ymribVOGorbZTH6D9vBt1CZwtdtLLIR6dpmgync'; 
 
-        // СПИСОК ВАШИХ КЛАСІВ
+        // СПИСОК ВАШИХ КЛАСІВ (Назви мають збігатися з назвами аркушів у таблиці)
         const CLASSES = ["7-А", "7-Б", "7-В", "7-Г", "7-Ж", "8-А", "8-Д", "10-А"];
 
         let state = {
@@ -79,14 +78,17 @@
 
         async function loadWheelData() {
             try {
+                // Формуємо посилання для отримання CSV даних з конкретного аркуша
                 const sheetUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(state.selectedClass)}`;
                 const response = await fetch(sheetUrl);
-                if (!response.ok) throw new Error("Таблиця не доступна");
+                if (!response.ok) throw new Error("Таблиця не доступна. Перевірте доступ за посиланням.");
                 
                 const csvData = await response.text();
                 state.allStudents = csvData.split('\n')
                     .map(row => row.replace(/"/g, '').trim())
                     .filter(name => name.length > 0 && !name.toLowerCase().includes("ім'я"));
+
+                if (state.allStudents.length === 0) throw new Error("Аркуш порожній або не знайдений");
 
                 const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'lessons', `class_${state.selectedClass}`);
                 
@@ -97,7 +99,7 @@
                     render();
                 }, (err) => console.error(err));
             } catch (e) {
-                alert("Помилка завантаження: " + e.message);
+                alert("Помилка: " + e.message + "\n\nПереконайтеся, що:\n1. Ви вказали вірний ID.\n2. Доступ до таблиці відкритий 'Усім, хто має посилання'.\n3. Назва аркуша в таблиці в точності збігається з назвою класу (напр. 7-А).");
                 state.view = 'menu';
                 render();
             }
@@ -183,7 +185,6 @@
                     </header>
 
                     <div class="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-10 min-h-0">
-                        <!-- Очікують -->
                         <div class="bg-white/70 backdrop-blur-xl p-10 rounded-[4rem] border border-white shadow-2xl flex flex-col min-h-0">
                             <h2 class="font-black text-slate-700 uppercase text-lg tracking-widest mb-6 flex justify-between">
                                 Очікують <span>${state.pendingStudents.length}</span>
@@ -193,7 +194,6 @@
                             </div>
                         </div>
 
-                        <!-- Колесо -->
                         <div class="lg:col-span-2 flex flex-col items-center justify-center">
                             <div class="wheel-container">
                                 <div class="marker"></div>
@@ -206,7 +206,6 @@
                             </button>
                         </div>
 
-                        <!-- Відповіли -->
                         <div class="bg-white/70 backdrop-blur-xl p-10 rounded-[4rem] border border-white shadow-2xl flex flex-col min-h-0">
                             <h2 class="font-black text-slate-700 uppercase text-lg tracking-widest mb-6 flex justify-between">
                                 Відповіли <span>${state.answeredStudents.length}</span>
@@ -233,6 +232,7 @@
             const wheel = document.getElementById('wheel');
             if (!wheel || state.pendingStudents.length === 0) return;
             
+            wheel.innerHTML = '';
             const total = state.pendingStudents.length;
             const sliceAngle = 360 / total;
             let gradient = "conic-gradient(";
