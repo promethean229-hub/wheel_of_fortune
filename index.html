@@ -18,24 +18,38 @@
             height: 100vh;
             width: 100vw;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .wheel-outer-box {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 0; 
+            padding: 10px;
         }
 
         .wheel-container { 
             position: relative; 
-            width: 480px; 
-            height: 480px; 
-            filter: drop-shadow(0 30px 50px rgba(79, 70, 229, 0.2)); 
+            width: min(75vw, 65vh); 
+            height: min(75vw, 65vh);
+            max-width: 500px; 
+            max-height: 500px;
+            filter: drop-shadow(0 20px 40px rgba(79, 70, 229, 0.25)); 
         }
 
         #wheel { 
             width: 100%; 
             height: 100%; 
             border-radius: 50%; 
-            border: 12px solid #fff; 
+            border: 10px solid #fff; 
             position: relative; 
             overflow: hidden; 
             transition: transform 5s cubic-bezier(0.1, 0, 0.1, 1); 
             background: #e2e8f0;
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.1);
         }
 
         .marker { 
@@ -43,11 +57,12 @@
             top: -10px; 
             left: 50%; 
             transform: translateX(-50%); 
-            width: 40px; 
-            height: 50px; 
+            width: min(8vw, 40px); 
+            height: min(10vw, 50px); 
             background: #ef4444; 
             clip-path: polygon(50% 100%, 0 0, 100% 0); 
             z-index: 30; 
+            filter: drop-shadow(0 3px 3px rgba(0,0,0,0.2));
         }
 
         .center-dot { 
@@ -55,40 +70,74 @@
             top: 50%; 
             left: 50%; 
             transform: translate(-50%, -50%); 
-            width: 70px; 
-            height: 70px; 
+            width: 15%; 
+            height: 15%; 
             background: white; 
-            border: 6px solid #f8fafc; 
+            border: 4px solid #f1f5f9; 
             border-radius: 50%; 
             z-index: 40; 
             display: flex; 
             align-items: center; 
             justify-content: center; 
-            font-size: 2rem; 
+            font-size: min(4vw, 1.5rem); 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
 
         .slice-label { 
             color: white; 
             font-weight: 900; 
-            font-size: 1rem; 
+            font-size: clamp(0.6rem, 1.8vh, 1rem); 
             position: absolute; 
             top: 50%; 
             left: 50%; 
             transform-origin: 0% 50%; 
-            width: 210px; 
+            width: 42%; 
             text-align: right; 
             pointer-events: none; 
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5); 
+            text-shadow: 0 1px 3px rgba(0,0,0,0.6); 
             padding-right: 15px;
             white-space: nowrap;
         }
 
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        @keyframes inviteBounce {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .invite-card {
+            animation: inviteBounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            background: white;
+            border-radius: 3rem;
+            padding: 3rem;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.5);
+            border: 10px solid #4f46e5;
+            position: relative;
+        }
+
+        .invite-card::before {
+            content: '✨';
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 3rem;
+            background: white;
+            padding: 0 15px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .star-active { color: #f59e0b; filter: drop-shadow(0 0 3px rgba(245, 158, 11, 0.5)); }
+        .star-inactive { color: #e2e8f0; }
     </style>
 </head>
 <body>
-    <div id="app-root" class="h-full w-full"></div>
+    <div id="app-root" class="h-full w-full flex flex-col"></div>
 
     <script type="module">
         const SPREADSHEET_ID = '1_pq4ymribVOGorbZTH6D9vBt1CZwtdtLLIR6dpmgync'; 
@@ -100,24 +149,66 @@
             selectedClass: null,
             allStudents: [],
             pendingStudents: [],
-            answeredStudents: [],
+            answeredStudents: [], // Тепер тут об'єкти { name, stars }
             isSpinning: false,
             currentRotation: 0,
-            errorMessage: null
+            audioReady: false
         };
+
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume().then(() => { state.audioReady = true; render(); });
+            } else {
+                state.audioReady = true;
+            }
+        }
+        
+        function playTick() {
+            if (!audioCtx || audioCtx.state === 'suspended') return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(160, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.06);
+            gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.06);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.06);
+        }
+
+        function playWinSound() {
+            if (!audioCtx || audioCtx.state === 'suspended') return;
+            [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.1);
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime + i * 0.1);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i * 0.1 + 0.3);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(audioCtx.currentTime + i * 0.1);
+                osc.stop(audioCtx.currentTime + i * 0.1 + 0.3);
+            });
+        }
 
         function render() {
             const root = document.getElementById('app-root');
             if (state.view === 'menu') {
                 root.innerHTML = `
-                    <div class="h-full flex flex-col items-center justify-center p-4 text-center">
-                        <h1 class="text-5xl font-black text-slate-800 mb-2">Колесо <span class="text-indigo-600">фортуни</span></h1>
-                        <p class="text-slate-500 mb-10 text-lg">Виберіть клас для завантаження списку</p>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-4xl">
+                    <div class="flex-1 flex flex-col items-center justify-center p-6 text-center overflow-y-auto">
+                        <h1 class="text-4xl md:text-5xl font-black text-slate-800 mb-2">Колесо <span class="text-indigo-600">фортуни</span></h1>
+                        <p class="text-slate-500 mb-10 text-lg">Виберіть клас</p>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 w-full max-w-4xl px-4">
                             ${CLASSES.map(c => `
-                                <button onclick="window.selectClass('${c}')" class="bg-white p-6 rounded-3xl shadow-lg hover:bg-indigo-600 group transition-all transform hover:-translate-y-1 border-b-4 border-slate-200">
+                                <button onclick="window.selectClass('${c}')" class="bg-white p-6 rounded-3xl shadow-lg hover:shadow-indigo-200 hover:scale-105 active:scale-95 group transition-all border-b-4 border-slate-200">
                                     <div class="text-3xl mb-2">🏫</div>
-                                    <div class="text-2xl font-black text-slate-700 group-hover:text-white">${c}</div>
+                                    <div class="text-xl font-black text-slate-700 group-hover:text-indigo-600">${c}</div>
                                 </button>
                             `).join('')}
                         </div>
@@ -125,52 +216,81 @@
                 `;
             } else if (state.view === 'loading') {
                 root.innerHTML = `
-                    <div class="flex flex-col items-center justify-center h-full">
+                    <div class="flex-1 flex flex-col items-center justify-center">
                         <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent mb-4"></div>
-                        <div class="text-lg font-bold text-slate-600">З'єднання з Google Таблицею...</div>
-                        ${state.errorMessage ? `<div class="mt-4 p-4 bg-red-100 text-red-600 rounded-xl max-w-md text-sm">${state.errorMessage}</div>` : ''}
-                        ${state.errorMessage ? `<button onclick="window.goBack()" class="mt-4 text-indigo-600 underline">Спробувати ще раз</button>` : ''}
+                        <div class="text-slate-600 font-bold text-lg">Синхронізація списків...</div>
                     </div>
                 `;
             } else {
                 root.innerHTML = `
-                    <div class="h-full flex flex-col p-6 overflow-hidden">
-                        <div class="flex justify-between items-center mb-6">
-                            <button onclick="window.goBack()" class="bg-white px-5 py-2 rounded-xl font-bold shadow hover:bg-slate-50">← КЛАСИ</button>
-                            <h2 class="text-3xl font-black text-slate-800">${state.selectedClass}</h2>
-                            <button onclick="window.resetProgress()" class="text-red-500 text-sm font-bold uppercase tracking-tighter">Скинути</button>
+                    <div class="flex justify-between items-center px-6 py-3 bg-white/50 backdrop-blur-md border-b border-white/50">
+                        <button onclick="window.goBack()" class="bg-white px-5 py-2 rounded-xl font-bold shadow-sm text-sm hover:bg-slate-50 transition-all active:scale-95">← НАЗАД</button>
+                        <div class="flex flex-col items-center">
+                            <h2 class="text-xl font-black text-slate-800 leading-none">${state.selectedClass}</h2>
+                            <span class="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-widest">${state.audioReady ? '🔊 Звук активовано' : '🔇 Натисніть для звуку'}</span>
                         </div>
-                        <div class="flex-1 grid grid-cols-1 md:grid-cols-4 gap-6 min-h-0">
-                            <div class="hidden md:flex bg-white/50 backdrop-blur rounded-3xl p-4 flex-col min-h-0 border border-white">
-                                <h3 class="text-xs font-black text-slate-400 uppercase mb-3">Очікують (${state.pendingStudents.length})</h3>
-                                <div class="overflow-y-auto space-y-2 custom-scrollbar">
-                                    ${state.pendingStudents.map(n => `<div class="bg-white p-2 rounded-lg shadow-sm text-sm font-bold">${n}</div>`).join('')}
-                                </div>
+                        <button onclick="window.resetProgress()" class="bg-slate-100 px-4 py-2 rounded-xl text-slate-500 text-[10px] font-bold uppercase hover:bg-red-50 hover:text-red-600 transition-all">Скинути</button>
+                    </div>
+
+                    <div class="flex-1 flex flex-row overflow-hidden p-4 gap-6">
+                        <!-- Список очікування -->
+                        <div class="hidden xl:flex w-72 bg-white/30 rounded-[2.5rem] p-5 flex-col border border-white/60">
+                            <h3 class="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">Очікують (${state.pendingStudents.length})</h3>
+                            <div class="flex-1 overflow-y-auto space-y-2 custom-scrollbar pr-1">
+                                ${state.pendingStudents.map(n => `<div class="bg-white/90 p-3 rounded-2xl shadow-sm text-xs font-bold text-slate-700">${n}</div>`).join('')}
                             </div>
-                            <div class="md:col-span-2 flex flex-col items-center justify-center">
-                                <div class="wheel-container scale-75 md:scale-100">
+                        </div>
+
+                        <!-- Центральна частина -->
+                        <div class="flex-1 flex flex-col min-w-0">
+                            <div class="wheel-outer-box">
+                                <div class="wheel-container">
                                     <div class="marker"></div>
                                     <div class="center-dot">🎯</div>
                                     <div id="wheel"></div>
                                 </div>
+                            </div>
+                            
+                            <div class="pb-6 flex justify-center">
                                 <button onclick="window.spin()" id="spin-btn" ${state.pendingStudents.length === 0 ? 'disabled' : ''} 
-                                    class="mt-8 bg-indigo-600 text-white text-3xl font-black py-4 px-16 rounded-full shadow-xl hover:bg-indigo-700 active:scale-95 disabled:opacity-10 transition-all">
+                                    class="bg-indigo-600 text-white text-3xl font-black py-5 px-20 rounded-[2rem] shadow-2xl hover:bg-indigo-700 active:scale-90 active:translate-y-1 disabled:opacity-30 transition-all border-b-8 border-indigo-900">
                                     КРУТИТИ!
                                 </button>
                             </div>
-                            <div class="hidden md:flex bg-white/50 backdrop-blur rounded-3xl p-4 flex-col min-h-0 border border-white">
-                                <h3 class="text-xs font-black text-slate-400 uppercase mb-3">Відповіли (${state.answeredStudents.length})</h3>
-                                <div class="overflow-y-auto space-y-2 custom-scrollbar">
-                                    ${state.answeredStudents.slice().reverse().map(n => `<div class="bg-green-50 p-2 rounded-lg text-sm font-bold text-green-700 opacity-60">✓ ${n}</div>`).join('')}
-                                </div>
+                        </div>
+
+                        <!-- Список відповідей зі ЗІРОЧКАМИ -->
+                        <div class="hidden xl:flex w-80 bg-white/30 rounded-[2.5rem] p-5 flex-col border border-white/60">
+                            <h3 class="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest text-right">Успіхи (${state.answeredStudents.length})</h3>
+                            <div class="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-1">
+                                ${state.answeredStudents.slice().reverse().map((student, idx) => `
+                                    <div class="bg-white/90 p-3 rounded-2xl shadow-sm border border-indigo-50 flex flex-col gap-2">
+                                        <div class="text-xs font-black text-indigo-900 truncate">✓ ${student.name}</div>
+                                        <div class="flex justify-between items-center">
+                                            <div class="flex gap-1">
+                                                ${[1, 2, 3].map(num => `
+                                                    <span class="text-xl ${student.stars >= num ? 'star-active' : 'star-inactive'} transition-all">★</span>
+                                                `).join('')}
+                                            </div>
+                                            <button onclick="window.addStar('${student.name}')" class="bg-indigo-50 hover:bg-indigo-100 p-2 rounded-lg text-indigo-600 transition-colors">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                `).join('')}
                             </div>
                         </div>
                     </div>
-                    <div id="winner-modal" class="fixed inset-0 bg-slate-900/90 hidden items-center justify-center z-50 p-4" onclick="window.closeModal()">
-                        <div class="bg-white rounded-[3rem] p-10 max-w-lg w-full text-center shadow-2xl" onclick="event.stopPropagation()">
-                            <div class="text-6xl mb-4">🎓</div>
-                            <div id="winner-name" class="text-4xl font-black text-indigo-600 mb-8"></div>
-                            <button onclick="window.closeModal()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black text-xl hover:bg-indigo-700">ГОТОВО</button>
+
+                    <!-- Модальне вікно -->
+                    <div id="winner-modal" class="fixed inset-0 bg-indigo-900/70 hidden items-center justify-center z-50 p-6 backdrop-blur-md" onclick="window.closeModal()">
+                        <div class="invite-card" onclick="event.stopPropagation()">
+                            <div id="winner-name" class="text-5xl font-black text-indigo-600 mb-4 break-words leading-tight drop-shadow-sm"></div>
+                            <div class="h-[2px] w-16 bg-slate-100 mx-auto mb-6"></div>
+                            <h4 class="text-slate-500 font-bold uppercase text-lg tracking-wide mb-10">до відповіді запрошується...</h4>
+                            <button onclick="window.closeModal()" class="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-2xl hover:bg-indigo-700 shadow-lg active:scale-95 transition-all border-b-4 border-indigo-800">
+                                ВЖЕ ЙДУ!
+                            </button>
                         </div>
                     </div>
                 `;
@@ -178,10 +298,21 @@
             }
         }
 
+        // Логіка додавання зірочок
+        window.addStar = (name) => {
+            const student = state.answeredStudents.find(s => s.name === name);
+            if (student) {
+                // Циклічне додавання: 0 -> 1 -> 2 -> 3 -> 0
+                student.stars = (student.stars + 1) % 4;
+                if (student.stars > 0) playTick(); // Короткий звук при додаванні
+                render();
+            }
+        };
+
         window.selectClass = async (className) => {
+            initAudio();
             state.selectedClass = className;
             state.view = 'loading';
-            state.errorMessage = null;
             render();
             await loadData(className);
         };
@@ -189,99 +320,90 @@
         window.goBack = () => { 
             state.view = 'menu'; 
             state.answeredStudents = [];
-            state.errorMessage = null;
             render(); 
         };
         
         window.closeModal = () => document.getElementById('winner-modal').classList.add('hidden');
 
         async function loadData(className) {
-            // МЕТОД 1: Google Visualization API (Найшвидший)
             try {
                 const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(className)}`;
                 const response = await fetch(url);
-                if (!response.ok) throw new Error("Network response was not ok");
                 const text = await response.text();
                 const jsonStr = text.match(/google\.visualization\.Query\.setResponse\(([\s\S\w\W]*)\);/)[1];
                 const data = JSON.parse(jsonStr);
-                
-                const names = data.table.rows
-                    .map(row => (row.c[0] ? String(row.c[0].v).trim() : null))
-                    .filter(n => n && n.length > 1 && !n.toLowerCase().includes("ім'я"));
-
-                if (names.length > 0) return success(names);
+                const names = data.table.rows.map(row => (row.c[0] ? String(row.c[0].v).trim() : null)).filter(n => n && n.length > 1 && !n.toLowerCase().includes("ім'я"));
+                success(names);
             } catch (e) {
-                console.warn("Method 1 failed, trying Method 2...");
-            }
-
-            // МЕТОД 2: Прямий CSV експорт (Найбільш сумісний з старими дошками)
-            try {
                 const csvUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&sheet=${encodeURIComponent(className)}`;
-                const response = await fetch(csvUrl);
-                const text = await response.text();
-                const names = text.split(/\r?\n/)
-                    .map(line => line.replace(/^"|"$/g, '').replace(/""/g, '"').trim())
-                    .filter(n => n.length > 1 && !n.toLowerCase().includes("ім'я"));
-
-                if (names.length > 0) return success(names);
-            } catch (e) {
-                console.warn("Method 2 failed, trying Method 3...");
-            }
-
-            // МЕТОД 3: AllOrigins Proxy (Якщо браузер дошки блокує CORS)
-            try {
-                const target = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(className)}`;
-                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(target)}`;
-                const response = await fetch(proxyUrl);
-                const data = await response.json();
-                const names = data.contents.split(/\r?\n/)
-                    .map(line => line.replace(/^"|"$/g, '').trim())
-                    .filter(n => n.length > 1 && !n.toLowerCase().includes("ім'я"));
-
-                if (names.length > 0) return success(names);
-            } catch (e) {
-                state.errorMessage = "Не вдалося отримати дані. Перевірте: 1. Чи підключена дошка до інтернету? 2. Чи відкрита таблиця для всіх?";
-                render();
+                fetch(csvUrl).then(r => r.text()).then(text => {
+                    const names = text.split(/\r?\n/).map(line => line.replace(/^"|"$/g, '').trim()).filter(n => n.length > 1 && !n.toLowerCase().includes("ім'я"));
+                    success(names);
+                }).catch(() => {
+                    alert("Помилка завантаження даних.");
+                    window.goBack();
+                });
             }
         }
 
         function success(names) {
             state.allStudents = names;
             state.pendingStudents = [...names];
-            state.answeredStudents = [];
             state.view = 'wheel';
             render();
         }
 
         window.spin = () => {
             if (state.isSpinning || state.pendingStudents.length === 0) return;
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+            
             state.isSpinning = true;
-            const extra = Math.floor(Math.random() * 360) + 1440;
+            const duration = 5000;
+            const extra = Math.floor(Math.random() * 360) + 2880; 
             state.currentRotation += extra;
             
             const wheel = document.getElementById('wheel');
             wheel.style.transform = `rotate(${state.currentRotation}deg)`;
             
+            let lastTickAngle = 0;
+            const sliceAngle = 360 / state.pendingStudents.length;
+            const start = performance.now();
+            
+            function trackTicks(now) {
+                if (!state.isSpinning) return;
+                const elapsed = now - start;
+                const progress = Math.min(elapsed / duration, 1);
+                const easeOut = 1 - Math.pow(1 - progress, 4); 
+                const currentAngle = state.currentRotation * easeOut;
+                
+                if (Math.abs(currentAngle - lastTickAngle) >= sliceAngle) {
+                    playTick();
+                    lastTickAngle = currentAngle;
+                }
+                if (progress < 1) requestAnimationFrame(trackTicks);
+            }
+            requestAnimationFrame(trackTicks);
+            
             setTimeout(() => {
-                const sliceAngle = 360 / state.pendingStudents.length;
                 const normalized = (360 - (state.currentRotation % 360)) % 360;
                 const winnerIndex = Math.floor(normalized / sliceAngle);
                 const winner = state.pendingStudents[winnerIndex];
                 
+                playWinSound();
                 document.getElementById('winner-name').innerText = winner;
                 document.getElementById('winner-modal').classList.remove('hidden');
                 document.getElementById('winner-modal').classList.add('flex');
                 
-                state.answeredStudents.push(winner);
+                // Додаємо об'єкт учня з нульовою кількістю зірочок за замовчуванням
+                state.answeredStudents.push({ name: winner, stars: 0 });
                 state.pendingStudents = state.pendingStudents.filter(n => n !== winner);
-                
                 state.isSpinning = false;
                 render();
-            }, 5000);
+            }, duration);
         };
 
         window.resetProgress = () => {
-            if (confirm("Скинути список?")) {
+            if (confirm("Скинути прогерес для цього класу?")) {
                 state.pendingStudents = [...state.allStudents];
                 state.answeredStudents = [];
                 render();
