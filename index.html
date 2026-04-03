@@ -166,13 +166,50 @@
             rotation: 0
         };
 
+        // Аудіо-движок для синтезу звуків
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playTickSound() {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function playWinSound() {
+            const frequencies = [523.25, 659.25, 783.99, 1046.50]; // Акорд C-major
+            frequencies.forEach((f, i) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(f, audioCtx.currentTime + (i * 0.1));
+                gain.gain.setValueAtTime(0, audioCtx.currentTime + (i * 0.1));
+                gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + (i * 0.1) + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(audioCtx.currentTime + (i * 0.1));
+                osc.stop(audioCtx.currentTime + 1.5);
+            });
+        }
+
         // Ініціалізація кнопок класів
         const grid = document.getElementById('class-grid');
         CLASSES.forEach(c => {
             const btn = document.createElement('button');
             btn.className = "bg-white p-6 rounded-3xl shadow-lg hover:shadow-indigo-100 hover:scale-105 transition-all font-black text-xl text-slate-700 border-b-4 border-slate-200";
             btn.innerText = c;
-            btn.onclick = () => loadClass(c);
+            btn.onclick = () => {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                loadClass(c);
+            };
             grid.appendChild(btn);
         });
 
@@ -267,22 +304,51 @@
 
         function spinWheel() {
             if (state.isSpinning || state.pending.length === 0) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
             state.isSpinning = true;
 
             const extraDegrees = 1800 + Math.random() * 360;
+            const startRotation = state.rotation;
             state.rotation += extraDegrees;
             
             const wrapper = document.getElementById('wheel-wrapper');
             wrapper.style.transition = "transform 5s cubic-bezier(0.1, 0, 0.2, 1)";
             wrapper.style.transform = `rotate(${state.rotation}deg)`;
 
+            // Логіка звуку "тікання"
+            const numSlices = state.pending.length;
+            const sliceDeg = 360 / numSlices;
+            let lastTickSlice = Math.floor((startRotation % 360) / sliceDeg);
+
+            const tickInterval = setInterval(() => {
+                if (!state.isSpinning) {
+                    clearInterval(tickInterval);
+                    return;
+                }
+                
+                // Отримуємо поточний кут через computedStyle, щоб знати реальний стан анімації
+                const style = window.getComputedStyle(wrapper);
+                const matrix = new DOMMatrixReadOnly(style.transform);
+                const currentAngle = Math.atan2(matrix.m12, matrix.m11) * (180 / Math.PI);
+                const normalizedAngle = (360 - (currentAngle % 360)) % 360;
+                const currentSlice = Math.floor(normalizedAngle / sliceDeg);
+
+                if (currentSlice !== lastTickSlice) {
+                    playTickSound();
+                    lastTickSlice = currentSlice;
+                }
+            }, 50);
+
             setTimeout(() => {
                 state.isSpinning = false;
+                clearInterval(tickInterval);
+                
                 const actualDeg = (360 - (state.rotation % 360)) % 360;
-                const sliceDeg = 360 / state.pending.length;
                 const index = Math.floor(actualDeg / sliceDeg);
                 currentWinner = state.pending[index];
 
+                playWinSound();
                 showModal(currentWinner);
             }, 5100);
         }
