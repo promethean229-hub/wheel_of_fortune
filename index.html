@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Колесо фортуни - Навігація</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 100%);
+            min-height: 100vh;
+        }
+        .breadcrumb-item:not(:last-child)::after {
+            content: "→";
+            margin: 0 1rem;
+            color: #94a3b8;
+            font-weight: bold;
+        }
+        .nav-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid transparent;
+        }
+        .nav-card:hover {
+            transform: translateY(-8px);
+            border-color: #3b82f6;
+            box-shadow: 0 30px 40px -10px rgb(0 0 0 / 0.15);
+        }
+        /* Стилізація скроллбару для великих списків */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body class="p-6 md:p-12">
+
+    <!-- Контейнер розширено до 1600px для смарт-дошок -->
+    <div class="max-w-[1600px] mx-auto">
+        <!-- Заголовок -->
+        <header class="text-center mb-16">
+            <h1 class="text-6xl md:text-7xl font-[900] text-slate-800 mb-6 tracking-tight">🎡 Колесо фортуни</h1>
+            <div class="h-2 w-32 bg-blue-600 mx-auto rounded-full mb-6"></div>
+            <p class="text-slate-600 text-2xl font-semibold">Оберіть клас та тему для початку роботи</p>
+        </header>
+
+        <!-- Навігаційна панель -->
+        <nav class="mb-12 flex items-center bg-white/80 backdrop-blur-md p-6 rounded-[2rem] shadow-lg border border-white">
+            <button onclick="goHome()" class="text-blue-600 text-xl font-black hover:text-blue-800 transition-colors flex items-center">
+                🏠 Головна
+            </button>
+            <div id="breadcrumb-container" class="flex items-center ml-4 text-xl"></div>
+        </nav>
+
+        <!-- Основна сітка -->
+        <div id="navigation-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            <!-- Картки генеруються скриптом -->
+        </div>
+    </div>
+
+    <script>
+        // Структура даних класів та тем
+        const schoolData = {
+            "7 Клас": {
+                "7-А": generateThemes("7-А"),
+                "7-Б": generateThemes("7-Б"),
+                "7-В": generateThemes("7-В"),
+                "7-Г": generateThemes("7-Г"),
+                "7-Ж": generateThemes("7-Ж")
+            },
+            "8 Клас": {
+                "8-А": generateThemes("8-А"),
+                "8-Д": generateThemes("8-Д")
+            },
+            "10 Клас": {
+                "10-А": generateThemes("10-А")
+            }
+        };
+
+        function generateThemes(className) {
+            const themes = {};
+            for (let i = 1; i <= 10; i++) {
+                // Відносне посилання для коректної роботи на GitHub Pages
+                themes[`Тема ${i}`] = `wheel_of_fortune.html?class=${className}&theme=${i}`;
+            }
+            return themes;
+        }
+
+        let currentPath = [];
+
+        function render() {
+            const grid = document.getElementById('navigation-grid');
+            const breadcrumb = document.getElementById('breadcrumb-container');
+            grid.innerHTML = '';
+            breadcrumb.innerHTML = '';
+
+            // Оновлення шляху (хлібні крихти)
+            currentPath.forEach((step, index) => {
+                const span = document.createElement('span');
+                span.className = 'breadcrumb-item text-slate-500 font-bold flex items-center';
+                const btn = document.createElement('button');
+                btn.innerText = step;
+                btn.className = "hover:text-blue-600 transition-colors";
+                btn.onclick = () => {
+                    currentPath = currentPath.slice(0, index + 1);
+                    render();
+                };
+                span.appendChild(btn);
+                breadcrumb.appendChild(span);
+            });
+
+            let currentData = schoolData;
+            currentPath.forEach(step => {
+                currentData = currentData[step];
+            });
+
+            // Якщо це фінальна точка (посилання), переходимо
+            if (typeof currentData === 'string') {
+                window.location.href = currentData;
+                return;
+            }
+
+            // Створення великих карток для смарт-дошки
+            Object.keys(currentData).forEach(key => {
+                const card = document.createElement('div');
+                card.className = "nav-card bg-white p-10 rounded-[3rem] shadow-xl cursor-pointer flex flex-col items-center justify-center text-center";
+                
+                let icon = "📁";
+                let subtitle = "Розділ";
+                let colorClass = "text-slate-400";
+                
+                if (key.includes("Тема")) {
+                    icon = "🎯";
+                    subtitle = "Заняття";
+                    colorClass = "text-orange-400";
+                } else if (key.includes("Клас")) {
+                    icon = "📚";
+                    subtitle = "Паралель";
+                    colorClass = "text-blue-400";
+                } else {
+                    icon = "👥";
+                    subtitle = "Клас";
+                    colorClass = "text-green-400";
+                }
+
+                card.innerHTML = `
+                    <div class="text-7xl mb-6">${icon}</div>
+                    <div class="text-3xl font-[900] text-slate-800">${key}</div>
+                    <div class="${colorClass} text-sm font-black uppercase tracking-[0.2em] mt-4">${subtitle}</div>
+                `;
+                
+                card.onclick = () => {
+                    if (typeof currentData[key] === 'string') {
+                        window.location.href = currentData[key];
+                    } else {
+                        currentPath.push(key);
+                        render();
+                    }
+                };
+                grid.appendChild(card);
+            });
+        }
+
+        function goHome() {
+            currentPath = [];
+            render();
+        }
+
+        // Рендер при завантаженні
+        window.onload = render;
+    </script>
+</body>
+</html>
