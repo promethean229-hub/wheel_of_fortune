@@ -3,178 +3,265 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Колесо фортуни - Навігація</title>
+    <title>Колесо фортуни - Cloud Sync</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Підключення Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot, getDoc, deleteDoc, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // КОНФІГУРАЦІЯ (заповнюється середовищем)
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // Глобальні змінні
+        // СЮДИ ВСТАВТЕ ID ВАШОЇ ТАБЛИЦІ, ДЕ ПРОПИСАНІ ІМЕНА ДІТЕЙ
+        const SPREADSHEET_ID = 'ВАШ_ID_З_КРОКУ_2'; 
+        
+        let allStudents = [];
+        let pendingStudents = [];
+        let answeredStudents = [];
+        let currentRotation = 0;
+        let isSpinning = false;
+        let currentUser = null;
+        const colors = ['#4f46e5', '#ef4444', '#10b981', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899', '#06b6d4'];
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const className = urlParams.get('class') || '7-А';
+        const themeNum = urlParams.get('theme') || '1';
+        
+        async function initAuth() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (e) {
+                console.error("Помилка ініціалізації авторизації:", e);
+            }
+        }
+
+        async function startApp() {
+            try {
+                await initAuth();
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        currentUser = user;
+                        loadData();
+                    }
+                });
+            } catch (e) { 
+                console.error("Помилка зміни стану авторизації:", e);
+                document.getElementById('loader').innerText = "Помилка авторизації!";
+            }
+        }
+
+        async function loadData() {
+            if (!currentUser) return;
+
+            try {
+                // Побудова URL для отримання CSV даних з конкретного аркуша (назва аркуша = назва класу)
+                const sheetUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(className)}`;
+                
+                const response = await fetch(sheetUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`Помилка доступу до таблиці: ${response.status}`);
+                }
+                
+                const csvData = await response.text();
+                
+                if (csvData.includes("<!DOCTYPE html>") || csvData.includes("google-signin")) {
+                    throw new Error("Таблиця закрита. Увімкніть 'Доступ для всіх, хто має посилання'.");
+                }
+
+                // Отримуємо імена з першого стовпця таблиці
+                allStudents = csvData.split('\n')
+                    .map(row => row.replace(/"/g, '').trim())
+                    .filter(name => name.length > 0 && 
+                                   !name.toLowerCase().includes("имя") && 
+                                   !name.toLowerCase().includes("ім'я") &&
+                                   !name.toLowerCase().includes("name"));
+
+                if (allStudents.length === 0) {
+                    document.getElementById('loader').innerHTML = `<p class="text-orange-500 font-bold">У таблиці для класу "${className}" не знайдено імен.</p>`;
+                    return;
+                }
+
+                // Підписка на оновлення списку тих, хто вже відповів
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'lessons', `${className}_theme_${themeNum}`);
+                
+                onSnapshot(docRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        answeredStudents = docSnap.data().answered || [];
+                    } else {
+                        answeredStudents = [];
+                    }
+                    syncLists();
+                }, (err) => {
+                    console.error("Помилка синхронізації Firestore:", err);
+                });
+
+            } catch (error) {
+                document.getElementById('loader').innerHTML = `
+                    <div class="text-red-500">
+                        <p class="font-bold">Не вдалося завантажити імена з Google Таблиці!</p>
+                        <p class="text-sm font-normal mt-2">${error.message}</p>
+                        <p class="text-xs font-normal mt-1 italic">Переконайтеся, що імена вписані в аркуш з назвою "${className}"</p>
+                    </div>
+                `;
+            }
+        }
+
+        function syncLists() {
+            pendingStudents = allStudents.filter(name => !answeredStudents.includes(name));
+            updateUI();
+        }
+
+        function updateUI() {
+            renderWheel();
+            renderLists();
+            document.getElementById('loader').classList.add('hidden');
+            document.getElementById('spin-button').disabled = pendingStudents.length === 0;
+            document.getElementById('class-title').innerText = `Клас: ${className}`;
+            document.getElementById('theme-title').innerText = `Тема №${themeNum}`;
+        }
+
+        function renderLists() {
+            document.getElementById('pending-list').innerHTML = pendingStudents.map(n => `<div class="bg-white p-3 rounded-xl shadow-sm font-bold text-slate-700 border border-slate-100">${n}</div>`).join('');
+            document.getElementById('answered-list').innerHTML = answeredStudents.map(n => `<div class="bg-green-50 p-3 rounded-xl font-bold text-green-700 border border-green-100 opacity-60">✓ ${n}</div>`).join('');
+        }
+
+        function renderWheel() {
+            const wheel = document.getElementById('wheel');
+            wheel.innerHTML = '';
+            if (pendingStudents.length === 0) {
+                wheel.style.background = '#f1f5f9';
+                wheel.innerHTML = '<div class="absolute inset-0 flex items-center justify-center font-black text-slate-300 uppercase p-10 text-center">Всі відповіли!</div>';
+                return;
+            }
+            const total = pendingStudents.length;
+            const sliceAngle = 360 / total;
+            let gradient = "conic-gradient(";
+            pendingStudents.forEach((name, i) => {
+                gradient += `${colors[i % colors.length]} ${i * sliceAngle}deg ${(i + 1) * sliceAngle}deg${i === total - 1 ? '' : ','}`;
+            });
+            wheel.style.background = gradient + ")";
+            pendingStudents.forEach((name, i) => {
+                const label = document.createElement('div');
+                label.className = 'slice-label';
+                label.style.transform = `translate(-100%, -50%) rotate(${i * sliceAngle + (sliceAngle / 2)}deg) translate(220px)`;
+                label.innerText = name.length > 15 ? name.substring(0, 13) + '..' : name;
+                wheel.appendChild(label);
+            });
+        }
+
+        window.spin = function() {
+            if (isSpinning || pendingStudents.length === 0 || !currentUser) return;
+            isSpinning = true;
+            const extraDegrees = Math.floor(Math.random() * 360) + 1800;
+            currentRotation += extraDegrees;
+            document.getElementById('wheel').style.transform = `rotate(${currentRotation}deg)`;
+            
+            setTimeout(async () => {
+                const actualDegrees = currentRotation % 360;
+                const sliceAngle = 360 / pendingStudents.length;
+                const winningIndex = Math.floor(((360 - actualDegrees % 360) % 360) / sliceAngle);
+                const winner = pendingStudents[winningIndex];
+                
+                const updatedAnswered = [...answeredStudents, winner];
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'lessons', `${className}_theme_${themeNum}`), {
+                        answered: updatedAnswered
+                    });
+                } catch (e) {
+                    console.error("Помилка збереження в Firestore:", e);
+                }
+
+                document.getElementById('winner-name').innerText = winner;
+                document.getElementById('winner-modal').style.display = 'flex';
+                isSpinning = false;
+            }, 5000);
+        }
+
+        window.resetMemory = async function() {
+            if (!currentUser) return;
+            if (confirm("Повернути всіх учнів до списку цієї теми на ВСІХ пристроях?")) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'lessons', `${className}_theme_${themeNum}`));
+                } catch (e) {
+                    console.error("Помилка видалення з Firestore:", e);
+                }
+            }
+        }
+
+        window.closeModal = () => document.getElementById('winner-modal').style.display = 'none';
+        
+        window.onload = startApp;
+    </script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 100%);
-            min-height: 100vh;
-        }
-        .breadcrumb-item:not(:last-child)::after {
-            content: "→";
-            margin: 0 1rem;
-            color: #94a3b8;
-            font-weight: bold;
-        }
-        .nav-card {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 2px solid transparent;
-        }
-        .nav-card:hover {
-            transform: translateY(-8px);
-            border-color: #3b82f6;
-            box-shadow: 0 30px 40px -10px rgb(0 0 0 / 0.15);
-        }
-        /* Стилізація скроллбару для великих списків */
-        ::-webkit-scrollbar {
-            width: 10px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 5px;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%); min-height: 100vh; }
+        .wheel-container { position: relative; width: 500px; height: 500px; margin: 1rem auto; filter: drop-shadow(0 25px 50px rgba(0,0,0,0.2)); }
+        #wheel { width: 100%; height: 100%; border-radius: 50%; border: 15px solid #fff; position: relative; overflow: hidden; transition: transform 5s cubic-bezier(0.1, 0, 0.1, 1); }
+        .marker { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); width: 60px; height: 65px; background: #ef4444; clip-path: polygon(50% 100%, 0 0, 100% 0); z-index: 30; }
+        .center-dot { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80px; height: 80px; background: white; border: 6px solid #334155; border-radius: 50%; z-index: 40; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; }
+        .slice-label { color: white; font-weight: 800; font-size: 1.1rem; position: absolute; top: 50%; left: 50%; transform-origin: right center; width: 180px; text-align: right; pointer-events: none; }
     </style>
 </head>
-<body class="p-6 md:p-12">
-
-    <!-- Контейнер розширено до 1600px для смарт-дошок -->
+<body class="p-6">
     <div class="max-w-[1600px] mx-auto">
-        <!-- Заголовок -->
-        <header class="text-center mb-16">
-            <h1 class="text-6xl md:text-7xl font-[900] text-slate-800 mb-6 tracking-tight">🎡 Колесо фортуни</h1>
-            <div class="h-2 w-32 bg-blue-600 mx-auto rounded-full mb-6"></div>
-            <p class="text-slate-600 text-2xl font-semibold">Оберіть клас та тему для початку роботи</p>
+        <header class="flex justify-between items-start mb-8">
+            <div>
+                <h1 id="class-title" class="text-5xl font-black text-slate-800 tracking-tight text-left">Завантаження...</h1>
+                <p id="theme-title" class="text-blue-600 font-bold text-2xl mt-2 text-left"></p>
+            </div>
+            <button onclick="resetMemory()" class="bg-white text-slate-500 px-6 py-2 rounded-xl font-bold border border-slate-200 hover:text-red-500 transition-all uppercase text-xs tracking-widest">
+                Очистити пам'ять теми (Cloud)
+            </button>
         </header>
 
-        <!-- Навігаційна панель -->
-        <nav class="mb-12 flex items-center bg-white/80 backdrop-blur-md p-6 rounded-[2rem] shadow-lg border border-white">
-            <button onclick="goHome()" class="text-blue-600 text-xl font-black hover:text-blue-800 transition-colors flex items-center">
-                🏠 Головна
-            </button>
-            <div id="breadcrumb-container" class="flex items-center ml-4 text-xl"></div>
-        </nav>
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div class="lg:col-span-1 bg-white/50 backdrop-blur-sm p-6 rounded-[2rem] border border-white">
+                <h2 class="text-xl font-black text-slate-700 mb-4 flex items-center gap-2">
+                    <span class="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></span> Ще не відповіли
+                </h2>
+                <div id="pending-list" class="space-y-2 max-h-[60vh] overflow-y-auto pr-2"></div>
+            </div>
 
-        <!-- Основна сітка -->
-        <div id="navigation-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            <!-- Картки генеруються скриптом -->
+            <div class="lg:col-span-2 flex flex-col items-center">
+                <div id="loader" class="text-blue-600 font-bold animate-pulse mb-4 text-xl text-center px-4">Зчитуємо імена з таблиці...</div>
+                <div class="wheel-container">
+                    <div class="marker"></div>
+                    <div class="center-dot"><span>😊</span></div>
+                    <div id="wheel"></div>
+                </div>
+                <button id="spin-button" onclick="spin()" class="mt-8 bg-gradient-to-br from-blue-600 to-indigo-700 text-white text-4xl font-black py-8 px-20 rounded-[3rem] shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-30">
+                    КРУТИТИ!
+                </button>
+            </div>
+
+            <div class="lg:col-span-1 bg-white/50 backdrop-blur-sm p-6 rounded-[2rem] border border-white">
+                <h2 class="text-xl font-black text-slate-700 mb-4 flex items-center gap-2">
+                    <span class="w-3 h-3 bg-green-500 rounded-full"></span> Вже відповіли
+                </h2>
+                <div id="answered-list" class="space-y-2 max-h-[60vh] overflow-y-auto pr-2"></div>
+            </div>
         </div>
     </div>
 
-    <script>
-        // Структура даних класів та тем
-        const schoolData = {
-            "7 Клас": {
-                "7-А": generateThemes("7-А"),
-                "7-Б": generateThemes("7-Б"),
-                "7-В": generateThemes("7-В"),
-                "7-Г": generateThemes("7-Г"),
-                "7-Ж": generateThemes("7-Ж")
-            },
-            "8 Клас": {
-                "8-А": generateThemes("8-А"),
-                "8-Д": generateThemes("8-Д")
-            },
-            "10 Клас": {
-                "10-А": generateThemes("10-А")
-            }
-        };
-
-        function generateThemes(className) {
-            const themes = {};
-            for (let i = 1; i <= 10; i++) {
-                // Відносне посилання для коректної роботи на GitHub Pages
-                themes[`Тема ${i}`] = `wheel_of_fortune.html?class=${className}&theme=${i}`;
-            }
-            return themes;
-        }
-
-        let currentPath = [];
-
-        function render() {
-            const grid = document.getElementById('navigation-grid');
-            const breadcrumb = document.getElementById('breadcrumb-container');
-            grid.innerHTML = '';
-            breadcrumb.innerHTML = '';
-
-            // Оновлення шляху (хлібні крихти)
-            currentPath.forEach((step, index) => {
-                const span = document.createElement('span');
-                span.className = 'breadcrumb-item text-slate-500 font-bold flex items-center';
-                const btn = document.createElement('button');
-                btn.innerText = step;
-                btn.className = "hover:text-blue-600 transition-colors";
-                btn.onclick = () => {
-                    currentPath = currentPath.slice(0, index + 1);
-                    render();
-                };
-                span.appendChild(btn);
-                breadcrumb.appendChild(span);
-            });
-
-            let currentData = schoolData;
-            currentPath.forEach(step => {
-                currentData = currentData[step];
-            });
-
-            // Якщо це фінальна точка (посилання), переходимо
-            if (typeof currentData === 'string') {
-                window.location.href = currentData;
-                return;
-            }
-
-            // Створення великих карток для смарт-дошки
-            Object.keys(currentData).forEach(key => {
-                const card = document.createElement('div');
-                card.className = "nav-card bg-white p-10 rounded-[3rem] shadow-xl cursor-pointer flex flex-col items-center justify-center text-center";
-                
-                let icon = "📁";
-                let subtitle = "Розділ";
-                let colorClass = "text-slate-400";
-                
-                if (key.includes("Тема")) {
-                    icon = "🎯";
-                    subtitle = "Заняття";
-                    colorClass = "text-orange-400";
-                } else if (key.includes("Клас")) {
-                    icon = "📚";
-                    subtitle = "Паралель";
-                    colorClass = "text-blue-400";
-                } else {
-                    icon = "👥";
-                    subtitle = "Клас";
-                    colorClass = "text-green-400";
-                }
-
-                card.innerHTML = `
-                    <div class="text-7xl mb-6">${icon}</div>
-                    <div class="text-3xl font-[900] text-slate-800">${key}</div>
-                    <div class="${colorClass} text-sm font-black uppercase tracking-[0.2em] mt-4">${subtitle}</div>
-                `;
-                
-                card.onclick = () => {
-                    if (typeof currentData[key] === 'string') {
-                        window.location.href = currentData[key];
-                    } else {
-                        currentPath.push(key);
-                        render();
-                    }
-                };
-                grid.appendChild(card);
-            });
-        }
-
-        function goHome() {
-            currentPath = [];
-            render();
-        }
-
-        // Рендер при завантаженні
-        window.onload = render;
-    </script>
+    <div id="winner-modal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-xl hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-[4rem] p-12 max-w-lg w-full text-center">
+            <div class="text-8xl mb-6">🎓</div>
+            <h3 class="text-xl font-bold text-slate-400 uppercase tracking-widest mb-2">Відповідає</h3>
+            <div id="winner-name" class="text-5xl font-black text-blue-600 mb-10 leading-tight"></div>
+            <button onclick="closeModal()" class="w-full bg-blue-600 text-white py-6 rounded-3xl font-black text-2xl hover:bg-blue-700 transition-all">ГОТОВО</button>
+        </div>
+    </div>
 </body>
 </html>
