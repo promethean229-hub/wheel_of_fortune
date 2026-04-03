@@ -22,16 +22,16 @@
 
         .wheel-container { 
             position: relative; 
-            width: 500px; 
-            height: 500px; 
-            filter: drop-shadow(0 40px 60px rgba(79, 70, 229, 0.2)); 
+            width: 480px; 
+            height: 480px; 
+            filter: drop-shadow(0 30px 50px rgba(79, 70, 229, 0.2)); 
         }
 
         #wheel { 
             width: 100%; 
             height: 100%; 
             border-radius: 50%; 
-            border: 15px solid #fff; 
+            border: 12px solid #fff; 
             position: relative; 
             overflow: hidden; 
             transition: transform 5s cubic-bezier(0.1, 0, 0.1, 1); 
@@ -40,11 +40,11 @@
 
         .marker { 
             position: absolute; 
-            top: -15px; 
+            top: -10px; 
             left: 50%; 
             transform: translateX(-50%); 
-            width: 50px; 
-            height: 60px; 
+            width: 40px; 
+            height: 50px; 
             background: #ef4444; 
             clip-path: polygon(50% 100%, 0 0, 100% 0); 
             z-index: 30; 
@@ -55,63 +55,44 @@
             top: 50%; 
             left: 50%; 
             transform: translate(-50%, -50%); 
-            width: 80px; 
-            height: 80px; 
+            width: 70px; 
+            height: 70px; 
             background: white; 
-            border: 8px solid #f8fafc; 
+            border: 6px solid #f8fafc; 
             border-radius: 50%; 
             z-index: 40; 
             display: flex; 
             align-items: center; 
             justify-content: center; 
-            font-size: 2.5rem; 
+            font-size: 2rem; 
         }
 
         .slice-label { 
             color: white; 
             font-weight: 900; 
-            font-size: 1.1rem; 
+            font-size: 1rem; 
             position: absolute; 
             top: 50%; 
             left: 50%; 
             transform-origin: 0% 50%; 
-            width: 220px; 
+            width: 210px; 
             text-align: right; 
             pointer-events: none; 
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3); 
-            padding-right: 20px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5); 
+            padding-right: 15px;
+            white-space: nowrap;
         }
 
-        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 20px; }
-        
-        .loading-spin {
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
 </head>
 <body>
-    <div id="app-root" class="h-full w-full">
-        <!-- Початковий стан завантаження -->
-        <div class="flex items-center justify-center h-screen">
-            <div class="text-2xl font-bold text-indigo-600 animate-pulse">Ініціалізація системи...</div>
-        </div>
-    </div>
+    <div id="app-root" class="h-full w-full"></div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-
-        // Firebase Setup
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'wheel-app-v1';
-
+        // Видалено всі імпорти Firebase для уникнення зависань
+        
         const SPREADSHEET_ID = '1_pq4ymribVOGorbZTH6D9vBt1CZwtdtLLIR6dpmgync'; 
         const CLASSES = ["7-А", "7-Б", "7-В", "7-Г", "7-Ж", "8-А", "8-Д", "10-А"];
         const COLORS = ['#4f46e5', '#ef4444', '#10b981', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899', '#06b6d4'];
@@ -123,129 +104,22 @@
             pendingStudents: [],
             answeredStudents: [],
             isSpinning: false,
-            currentRotation: 0,
-            user: null
+            currentRotation: 0
         };
 
-        // UI Helpers
-        window.selectClass = async (className) => {
-            state.selectedClass = className;
-            state.view = 'loading';
-            render();
-            await loadClassData(className);
-        };
-
-        window.goBack = () => {
-            state.view = 'menu';
-            state.selectedClass = null;
-            render();
-        };
-
-        async function loadClassData(className) {
-            try {
-                // Використовуємо проксі для уникнення CORS помилок
-                const sheetUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(className)}`;
-                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(sheetUrl)}`;
-                
-                const response = await fetch(proxyUrl);
-                if (!response.ok) throw new Error("Помилка мережі");
-                
-                const data = await response.json();
-                const csvData = data.contents;
-                
-                state.allStudents = csvData.split('\n')
-                    .map(row => row.replace(/"/g, '').trim())
-                    .filter(name => name.length > 0 && !name.toLowerCase().includes("ім'я") && !name.toLowerCase().includes("name"));
-
-                if (state.allStudents.length === 0) throw new Error("Список учнів порожній");
-
-                // Підписка на Firestore
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'lessons', `class_${className}`);
-                onSnapshot(docRef, (docSnap) => {
-                    state.answeredStudents = docSnap.exists() ? (docSnap.data().answered || []) : [];
-                    state.pendingStudents = state.allStudents.filter(n => !state.answeredStudents.includes(n));
-                    state.view = 'wheel';
-                    render();
-                }, (err) => {
-                    console.error("Firestore error:", err);
-                    state.pendingStudents = state.allStudents;
-                    state.view = 'wheel';
-                    render();
-                });
-
-            } catch (e) {
-                console.error(e);
-                alert("Помилка завантаження: " + e.message);
-                state.view = 'menu';
-                render();
-            }
-        }
-
-        window.spin = () => {
-            if (state.isSpinning || state.pendingStudents.length === 0) return;
-            
-            state.isSpinning = true;
-            const extraDegrees = Math.floor(Math.random() * 360) + 1440; // min 4 full spins
-            state.currentRotation += extraDegrees;
-            
-            const wheelElem = document.getElementById('wheel');
-            wheelElem.style.transform = `rotate(${state.currentRotation}deg)`;
-            
-            setTimeout(async () => {
-                const actualDegrees = state.currentRotation % 360;
-                const sliceAngle = 360 / state.pendingStudents.length;
-                // Маркер нагорі (0 градусів), колесо крутиться за годинниковою стрілкою
-                const winningIndex = Math.floor(((360 - (actualDegrees % 360)) % 360) / sliceAngle);
-                const winner = state.pendingStudents[winningIndex];
-                
-                showWinner(winner);
-                
-                const updatedAnswered = [...state.answeredStudents, winner];
-                try {
-                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'lessons', `class_${state.selectedClass}`), {
-                        answered: updatedAnswered
-                    });
-                } catch (err) {
-                    console.error("Save error:", err);
-                }
-                state.isSpinning = false;
-            }, 5000);
-        };
-
-        window.resetWheel = async () => {
-            if (confirm("Скинути список відповідей для цього класу?")) {
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'lessons', `class_${state.selectedClass}`), {
-                    answered: []
-                });
-            }
-        };
-
-        function showWinner(name) {
-            const modal = document.getElementById('winner-modal');
-            const nameElem = document.getElementById('winner-name');
-            nameElem.innerText = name;
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        }
-
-        window.closeModal = () => {
-            const modal = document.getElementById('winner-modal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        };
-
+        // Функція відображення інтерфейсу
         function render() {
             const root = document.getElementById('app-root');
             if (state.view === 'menu') {
                 root.innerHTML = `
-                    <div class="h-full flex flex-col items-center justify-center p-6">
-                        <h1 class="text-6xl font-black text-slate-800 mb-2">Колесо <span class="text-indigo-600">фортуни</span></h1>
-                        <p class="text-slate-500 mb-12 text-xl font-medium">Оберіть клас для початку опитування</p>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 w-full max-w-5xl">
+                    <div class="h-full flex flex-col items-center justify-center p-4">
+                        <h1 class="text-5xl font-black text-slate-800 mb-2">Колесо <span class="text-indigo-600">фортуни</span></h1>
+                        <p class="text-slate-500 mb-10 text-lg">Виберіть клас для завантаження списку з Google Таблиці</p>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-4xl">
                             ${CLASSES.map(c => `
-                                <button onclick="selectClass('${c}')" class="bg-white p-8 rounded-[2rem] shadow-xl hover:scale-105 transition-all border-b-4 border-indigo-200 group hover:bg-indigo-600">
-                                    <div class="text-4xl mb-2 group-hover:scale-110 transition-transform">🏫</div>
-                                    <div class="text-3xl font-black text-slate-700 group-hover:text-white">${c}</div>
+                                <button onclick="window.selectClass('${c}')" class="bg-white p-6 rounded-3xl shadow-lg hover:bg-indigo-600 group transition-all transform hover:-translate-y-1 border-b-4 border-slate-200">
+                                    <div class="text-3xl mb-2">🏫</div>
+                                    <div class="text-2xl font-black text-slate-700 group-hover:text-white">${c}</div>
                                 </button>
                             `).join('')}
                         </div>
@@ -254,62 +128,49 @@
             } else if (state.view === 'loading') {
                 root.innerHTML = `
                     <div class="flex flex-col items-center justify-center h-full">
-                        <div class="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full loading-spin mb-4"></div>
-                        <div class="text-xl font-bold text-slate-600">Завантаження даних класу...</div>
+                        <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent mb-4"></div>
+                        <div class="text-lg font-bold text-slate-600">Завантаження списку ${state.selectedClass}...</div>
                     </div>
                 `;
-            } else if (state.view === 'wheel') {
+            } else {
                 root.innerHTML = `
-                    <div class="h-full flex flex-col p-6">
+                    <div class="h-full flex flex-col p-6 overflow-hidden">
                         <div class="flex justify-between items-center mb-6">
-                            <button onclick="goBack()" class="bg-white px-6 py-3 rounded-2xl font-bold shadow hover:bg-slate-50 transition-all flex items-center gap-2">
-                                <span>←</span> ТАБЛИЦЯ КЛАСІВ
-                            </button>
-                            <h2 class="text-4xl font-black text-slate-800">${state.selectedClass} КЛАС</h2>
-                            <button onclick="resetWheel()" class="text-red-500 font-bold hover:bg-red-50 px-4 py-2 rounded-lg transition-all">
-                                СКИНУТИ ПРОГРЕС
-                            </button>
+                            <button onclick="window.goBack()" class="bg-white px-5 py-2 rounded-xl font-bold shadow hover:bg-slate-50">← КЛАСИ</button>
+                            <h2 class="text-3xl font-black text-slate-800">${state.selectedClass}</h2>
+                            <button onclick="window.resetProgress()" class="text-red-500 text-sm font-bold uppercase tracking-tighter">Скинути список</button>
                         </div>
-
                         <div class="flex-1 grid grid-cols-4 gap-6 min-h-0">
-                            <!-- Список черги -->
-                            <div class="bg-white/60 backdrop-blur rounded-[2rem] p-6 shadow-inner flex flex-col min-h-0 border border-white">
-                                <h3 class="font-black text-slate-400 uppercase text-xs tracking-widest mb-4">Очікують (${state.pendingStudents.length})</h3>
-                                <div class="overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                                    ${state.pendingStudents.map(n => `<div class="bg-white p-3 rounded-xl shadow-sm font-bold text-slate-700 border border-slate-100">${n}</div>`).join('')}
+                            <div class="bg-white/50 backdrop-blur rounded-3xl p-4 flex flex-col min-h-0 border border-white">
+                                <h3 class="text-xs font-black text-slate-400 uppercase mb-3">Очікують (${state.pendingStudents.length})</h3>
+                                <div class="overflow-y-auto space-y-2 custom-scrollbar">
+                                    ${state.pendingStudents.map(n => `<div class="bg-white p-2 rounded-lg shadow-sm text-sm font-bold">${n}</div>`).join('')}
                                 </div>
                             </div>
-
-                            <!-- Колесо -->
                             <div class="col-span-2 flex flex-col items-center justify-center">
                                 <div class="wheel-container">
                                     <div class="marker"></div>
                                     <div class="center-dot">🎯</div>
                                     <div id="wheel"></div>
                                 </div>
-                                <button onclick="spin()" id="spin-btn" ${state.pendingStudents.length === 0 ? 'disabled' : ''} 
-                                    class="mt-10 bg-indigo-600 text-white text-4xl font-black py-6 px-20 rounded-full shadow-2xl hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-20">
+                                <button onclick="window.spin()" id="spin-btn" ${state.pendingStudents.length === 0 ? 'disabled' : ''} 
+                                    class="mt-8 bg-indigo-600 text-white text-3xl font-black py-4 px-16 rounded-full shadow-xl hover:bg-indigo-700 active:scale-95 disabled:opacity-10 transition-all">
                                     КРУТИТИ!
                                 </button>
                             </div>
-
-                            <!-- Список відповідей -->
-                            <div class="bg-white/60 backdrop-blur rounded-[2rem] p-6 shadow-inner flex flex-col min-h-0 border border-white">
-                                <h3 class="font-black text-slate-400 uppercase text-xs tracking-widest mb-4">Відповіли (${state.answeredStudents.length})</h3>
-                                <div class="overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                                    ${state.answeredStudents.map(n => `<div class="bg-green-50 p-3 rounded-xl font-bold text-green-700 border border-green-100 opacity-60">✓ ${n}</div>`).join('').reverse()}
+                            <div class="bg-white/50 backdrop-blur rounded-3xl p-4 flex flex-col min-h-0 border border-white">
+                                <h3 class="text-xs font-black text-slate-400 uppercase mb-3">Відповіли (${state.answeredStudents.length})</h3>
+                                <div class="overflow-y-auto space-y-2 custom-scrollbar">
+                                    ${state.answeredStudents.slice().reverse().map(n => `<div class="bg-green-50 p-2 rounded-lg text-sm font-bold text-green-700 opacity-60">✓ ${n}</div>`).join('')}
                                 </div>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Модалка переможця -->
-                    <div id="winner-modal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md hidden items-center justify-center z-50 p-6">
-                        <div class="bg-white rounded-[4rem] p-16 max-w-2xl w-full text-center shadow-2xl" onclick="event.stopPropagation()">
-                            <div class="text-8xl mb-6">🎓</div>
-                            <h3 class="text-2xl font-bold text-slate-400 uppercase tracking-widest mb-4">Відповідає учень:</h3>
-                            <div id="winner-name" class="text-6xl font-black text-indigo-600 mb-10"></div>
-                            <button onclick="closeModal()" class="w-full bg-indigo-600 text-white py-6 rounded-3xl font-black text-2xl hover:bg-indigo-700 shadow-xl">ПРОДОВЖИТИ</button>
+                    <div id="winner-modal" class="fixed inset-0 bg-slate-900/90 hidden items-center justify-center z-50 p-4" onclick="window.closeModal()">
+                        <div class="bg-white rounded-[3rem] p-10 max-w-lg w-full text-center shadow-2xl" onclick="event.stopPropagation()">
+                            <div class="text-6xl mb-4">🎓</div>
+                            <div id="winner-name" class="text-4xl font-black text-indigo-600 mb-8"></div>
+                            <button onclick="window.closeModal()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black text-xl hover:bg-indigo-700">ГОТОВО</button>
                         </div>
                     </div>
                 `;
@@ -317,54 +178,108 @@
             }
         }
 
-        function drawWheel() {
-            const wheel = document.getElementById('wheel');
-            if (!wheel || state.pendingStudents.length === 0) return;
-            
-            const total = state.pendingStudents.length;
-            const sliceAngle = 360 / total;
-            
-            // Створюємо конічний градієнт
-            let gradientParts = [];
-            state.pendingStudents.forEach((_, i) => {
-                const color = COLORS[i % COLORS.length];
-                gradientParts.push(`${color} ${i * sliceAngle}deg ${(i + 1) * sliceAngle}deg`);
-            });
-            wheel.style.background = `conic-gradient(${gradientParts.join(', ')})`;
-            
-            // Додаємо текст
-            wheel.innerHTML = '';
-            state.pendingStudents.forEach((name, i) => {
-                const label = document.createElement('div');
-                label.className = 'slice-label';
-                // Повертаємо на центр сектору
-                const rotation = i * sliceAngle + (sliceAngle / 2);
-                label.style.transform = `rotate(${rotation}deg) translateY(-50%)`;
-                label.innerText = name.length > 15 ? name.substring(0, 13) + '..' : name;
-                wheel.appendChild(label);
-            });
-        }
+        // Глобальні функції для кнопок
+        window.selectClass = async (className) => {
+            state.selectedClass = className;
+            state.view = 'loading';
+            render();
+            await loadCSV(className);
+        };
 
-        // Авторизація та старт
-        async function init() {
+        window.goBack = () => { 
+            state.view = 'menu'; 
+            state.answeredStudents = []; // Очищуємо при зміні класу
+            render(); 
+        };
+        
+        window.closeModal = () => document.getElementById('winner-modal').classList.add('hidden');
+
+        async function loadCSV(className) {
             try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                // Використання CSV експорту через проксі
+                const sheetUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(className)}`;
+                const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(sheetUrl)}`);
+                const json = await response.json();
                 
-                onAuthStateChanged(auth, (user) => {
-                    state.user = user;
-                    render();
-                });
+                const names = json.contents.split('\n')
+                    .map(row => row.replace(/"/g, '').trim())
+                    .filter(name => name.length > 0 && !name.toLowerCase().includes("ім'я") && !name.toLowerCase().includes("name"));
+
+                if (names.length === 0) throw new Error("Порожня таблиця");
+
+                state.allStudents = names;
+                state.pendingStudents = [...names];
+                state.answeredStudents = [];
+                state.view = 'wheel';
+                render();
             } catch (e) {
-                console.error("Auth init failed:", e);
-                render(); // Рендеримо меню навіть якщо авториз. не пройшла
+                alert("Помилка: Не вдалося завантажити список. Перевірте: 1. Чи є аркуш з назвою '" + className + "'. 2. Чи відкритий доступ до таблиці.");
+                state.view = 'menu';
+                render();
             }
         }
 
-        window.onload = init;
+        window.spin = () => {
+            if (state.isSpinning || state.pendingStudents.length === 0) return;
+            state.isSpinning = true;
+            const extra = Math.floor(Math.random() * 360) + 1440; // Мінімум 4 повних оберти
+            state.currentRotation += extra;
+            
+            const wheel = document.getElementById('wheel');
+            wheel.style.transform = `rotate(${state.currentRotation}deg)`;
+            
+            setTimeout(() => {
+                const sliceAngle = 360 / state.pendingStudents.length;
+                const normalized = (360 - (state.currentRotation % 360)) % 360;
+                const winnerIndex = Math.floor(normalized / sliceAngle);
+                const winner = state.pendingStudents[winnerIndex];
+                
+                document.getElementById('winner-name').innerText = winner;
+                document.getElementById('winner-modal').classList.remove('hidden');
+                document.getElementById('winner-modal').classList.add('flex');
+                
+                // Видаляємо переможця зі списку очікування та додаємо в "відповіли"
+                state.answeredStudents.push(winner);
+                state.pendingStudents = state.pendingStudents.filter(n => n !== winner);
+                
+                state.isSpinning = false;
+                render();
+            }, 5000);
+        };
+
+        window.resetProgress = () => {
+            if (confirm("Повернути всіх учнів у колесо?")) {
+                state.pendingStudents = [...state.allStudents];
+                state.answeredStudents = [];
+                render();
+            }
+        };
+
+        function drawWheel() {
+            const wheel = document.getElementById('wheel');
+            if (!wheel || state.pendingStudents.length === 0) return;
+            const total = state.pendingStudents.length;
+            const slice = 360 / total;
+            
+            let bg = "conic-gradient(";
+            state.pendingStudents.forEach((_, i) => {
+                bg += `${COLORS[i % COLORS.length]} ${i * slice}deg ${(i + 1) * slice}deg${i === total-1 ? '' : ','}`;
+            });
+            wheel.style.background = bg + ")";
+            
+            wheel.innerHTML = '';
+            state.pendingStudents.forEach((name, i) => {
+                const el = document.createElement('div');
+                el.className = 'slice-label';
+                el.style.transform = `rotate(${i * slice + (slice / 2)}deg) translateY(-50%)`;
+                el.innerText = name;
+                wheel.appendChild(el);
+            });
+        }
+
+        // Початковий рендер
+        render();
+
     </script>
 </body>
 </html>
