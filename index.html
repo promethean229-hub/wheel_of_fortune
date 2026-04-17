@@ -216,17 +216,28 @@
             currentWinner: null
         };
 
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
 
         function playTickSound() {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
-            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-            osc.connect(gain).connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.05);
+            if (!audioCtx || audioCtx.state !== 'running') return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                osc.connect(gain).connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.05);
+            } catch(e) { console.error("Audio error", e); }
         }
 
         const grid = document.getElementById('class-grid');
@@ -235,7 +246,7 @@
             btn.className = "bg-white/10 border border-white/20 p-12 rounded-[3.5rem] shadow-2xl hover:bg-white/20 hover:scale-105 transition-all font-black text-5xl text-white";
             btn.innerText = c;
             btn.onclick = () => {
-                if (audioCtx.state === 'suspended') audioCtx.resume();
+                initAudio();
                 loadClass(c);
             };
             grid.appendChild(btn);
@@ -341,9 +352,15 @@
         }
 
         function spinWheel() {
-            if (state.isSpinning || state.pending.length === 0) return;
-            state.isSpinning = true;
+            initAudio(); // Пробуджуємо звук
+            if (state.isSpinning || state.pending.length === 0) {
+                // Якщо раптом кнопка неактивна але ми сюди потрапили - примусово відновлюємо її
+                document.getElementById('spin-btn').disabled = false;
+                document.getElementById('spin-btn').innerText = "КРУТИТИ";
+                return;
+            }
             
+            state.isSpinning = true;
             const spinBtn = document.getElementById('spin-btn');
             spinBtn.disabled = true;
             spinBtn.innerText = "КРУТИМО...";
@@ -376,8 +393,6 @@
                 state.currentWinner = state.pending[sectorIndex];
                 document.getElementById('winner-name').innerText = state.currentWinner;
                 document.getElementById('modal-overlay').style.display = 'flex';
-                
-                // Стан isSpinning все ще true, поки не буде обрана дія в handleAction
             }, 5100);
         }
 
@@ -391,9 +406,8 @@
             } else if (type === 'absent') {
                 state.pending = state.pending.filter(n => n !== state.currentWinner);
             }
-            // Якщо 'reject' — нічого не робимо, учень залишається в списку
 
-            // ПРИМУСОВЕ СКИНАННЯ СТАНУ:
+            // ПРИМУСОВЕ СКИНАННЯ СТАНУ
             state.isSpinning = false;
             spinBtn.disabled = false;
             spinBtn.innerText = "КРУТИТИ";
@@ -409,6 +423,17 @@
                 updateUI();
             }
         }
+        
+        // Додатковий запобіжник: перевірка кожні 10 секунд, чи не "зависла" кнопка
+        setInterval(() => {
+            if (!state.isSpinning && document.getElementById('modal-overlay').style.display !== 'flex') {
+                const spinBtn = document.getElementById('spin-btn');
+                if (spinBtn.disabled) {
+                    spinBtn.disabled = false;
+                    spinBtn.innerText = "КРУТИТИ";
+                }
+            }
+        }, 10000);
     </script>
 </body>
 </html>
