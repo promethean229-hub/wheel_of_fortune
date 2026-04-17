@@ -122,8 +122,8 @@
         .btn-gradient:disabled {
             opacity: 0.5;
             cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
+            transform: none !important;
+            box-shadow: none !important;
         }
 
         .custom-scroll::-webkit-scrollbar { width: 8px; }
@@ -377,8 +377,7 @@
                 document.getElementById('winner-name').innerText = state.currentWinner;
                 document.getElementById('modal-overlay').style.display = 'flex';
                 
-                // Ми НЕ скидаємо isSpinning тут, а робимо це при закритті вікна дії, 
-                // щоб запобігти повторним клікам під час активного модального вікна
+                // Стан isSpinning все ще true, поки не буде обрана дія в handleAction
             }, 5100);
         }
 
@@ -392,9 +391,9 @@
             } else if (type === 'absent') {
                 state.pending = state.pending.filter(n => n !== state.currentWinner);
             }
-            // Якщо type === 'reject', ми просто нічого не робимо з масивами, учень залишається в списку
+            // Якщо 'reject' — нічого не робимо, учень залишається в списку
 
-            // Обов'язково скидаємо прапорець анімації та розблоковуємо кнопку
+            // ПРИМУСОВЕ СКИНАННЯ СТАНУ:
             state.isSpinning = false;
             spinBtn.disabled = false;
             spinBtn.innerText = "КРУТИТИ";
