@@ -22,19 +22,22 @@
             overflow: hidden;
             height: 100vh;
             color: white;
+            display: flex;
+            flex-direction: column;
         }
 
         h1, h2, .font-brand { font-family: 'Montserrat', sans-serif; }
 
+        /* Адаптивна зона колеса */
         .game-wheel-area {
             position: relative;
-            width: min(82vw, 82vh);
-            height: min(82vw, 82vh);
+            width: min(70vw, 65vh); /* Зменшено для кращого вписування в екран ноутбука */
+            height: min(70vw, 65vh);
             margin: 0 auto;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 50%;
-            padding: 20px;
-            box-shadow: 0 0 80px rgba(99, 102, 241, 0.3);
+            padding: 15px;
+            box-shadow: 0 0 60px rgba(99, 102, 241, 0.2);
         }
 
         .wheel-container { 
@@ -49,26 +52,26 @@
             width: 100%;
             height: 100%;
             border-radius: 50%;
-            border: 10px solid #ffffff;
-            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+            border: 8px solid #ffffff;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
         }
 
         .wheel-marker {
             position: absolute;
-            top: -20px;
+            top: -15px;
             left: 50%;
             transform: translateX(-50%);
-            width: 70px;
-            height: 90px;
+            width: 50px;
+            height: 65px;
             background: #ffffff;
             clip-path: polygon(50% 100%, 0 0, 100% 0);
             z-index: 50;
-            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5));
+            filter: drop-shadow(0 8px 12px rgba(0,0,0,0.5));
         }
         .wheel-marker::after {
             content: '';
             position: absolute;
-            top: 5px; left: 10px; right: 10px; bottom: 30px;
+            top: 4px; left: 8px; right: 8px; bottom: 22px;
             background: #ef4444;
             clip-path: polygon(50% 100%, 0 0, 100% 0);
         }
@@ -77,7 +80,7 @@
             background: rgba(255, 255, 255, 0.07);
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 3rem;
+            border-radius: 2rem;
         }
 
         .star-on { color: #fbbf24; filter: drop-shadow(0 0 5px #fbbf24); }
@@ -92,27 +95,30 @@
             display: none;
             align-items: center;
             justify-content: center;
+            padding: 20px;
         }
 
         .winner-card {
             background: white;
-            border-radius: 5rem;
-            padding: 5rem;
+            border-radius: 3rem;
+            padding: 2.5rem;
             width: 100%;
-            max-width: 900px;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
             text-align: center;
             color: #1e293b;
             box-shadow: 0 0 100px rgba(99, 102, 241, 0.6);
-            border: 15px solid #6366f1;
+            border: 10px solid #6366f1;
         }
 
         .btn-gradient {
             background: var(--primary-gradient);
-            box-shadow: 0 10px 0 #4338ca;
+            box-shadow: 0 6px 0 #4338ca;
             transition: all 0.2s;
         }
         .btn-gradient:active {
-            transform: translateY(10px);
+            transform: translateY(6px);
             box-shadow: 0 0 0 #4338ca;
         }
         .btn-gradient:disabled {
@@ -122,26 +128,27 @@
             box-shadow: none !important;
         }
 
-        .custom-scroll::-webkit-scrollbar { width: 8px; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
     </style>
 </head>
-<body class="flex flex-col">
+<body>
 
+    <!-- Модалка -->
     <div id="modal-overlay">
         <div class="winner-card">
-            <p class="text-indigo-600 font-black uppercase tracking-widest text-2xl mb-6">Зірка уроку:</p>
-            <h2 id="winner-name" class="text-8xl font-black mb-16 leading-tight break-words">Ім'я</h2>
+            <p class="text-indigo-600 font-black uppercase tracking-widest text-lg mb-2">Зірка уроку:</p>
+            <h2 id="winner-name" class="text-4xl md:text-5xl font-black mb-8 leading-tight break-words px-2">Ім'я</h2>
             
-            <div class="flex flex-col gap-8">
-                <button onclick="handleAction('go')" class="btn-gradient w-full text-white py-10 rounded-[3.5rem] font-black text-5xl hover:brightness-110 active:scale-95">
+            <div class="flex flex-col gap-4">
+                <button onclick="handleAction('go')" class="btn-gradient w-full text-white py-6 rounded-2xl font-black text-3xl hover:brightness-110 active:scale-95">
                     ВІДПОВІДАЄ! 🎓
                 </button>
-                <div class="grid grid-cols-2 gap-8">
-                    <button onclick="handleAction('reject')" class="bg-slate-200 text-slate-700 py-8 rounded-3xl font-black text-3xl hover:bg-slate-300 border-b-8 border-slate-400">
-                        Спробувати ще 🔄
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="handleAction('reject')" class="bg-slate-200 text-slate-700 py-4 rounded-xl font-black text-xl hover:bg-slate-300 border-b-4 border-slate-400">
+                        Ще раз 🔄
                     </button>
-                    <button onclick="handleAction('absent')" class="bg-red-50 text-red-400 py-8 rounded-3xl font-black text-3xl hover:bg-red-100 border-b-8 border-red-200">
+                    <button onclick="handleAction('absent')" class="bg-red-50 text-red-400 py-4 rounded-xl font-black text-xl hover:bg-red-100 border-b-4 border-red-200">
                         Відсутній 👤
                     </button>
                 </div>
@@ -149,44 +156,51 @@
         </div>
     </div>
 
-    <div id="app" class="flex-1 flex flex-col h-full">
-        <div id="header" class="hidden flex justify-between items-center px-12 py-8 bg-white/5 border-b border-white/10">
-            <button onclick="location.reload()" class="font-black text-2xl text-white/40 hover:text-indigo-400 transition-colors">← КЛАСИ</button>
-            <h1 id="class-title" class="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">7-А</h1>
-            <div class="w-40"></div>
+    <!-- Основний додаток -->
+    <div id="app" class="flex-1 flex flex-col h-full overflow-hidden">
+        <!-- Шапка -->
+        <div id="header" class="hidden flex justify-between items-center px-6 py-4 bg-white/5 border-b border-white/10 shrink-0">
+            <button onclick="location.reload()" class="font-black text-lg text-white/40 hover:text-indigo-400">← КЛАСИ</button>
+            <h1 id="class-title" class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Клас</h1>
+            <div class="w-20"></div>
         </div>
 
-        <div id="menu-view" class="flex-1 flex flex-col items-center justify-center p-10 text-center">
-            <h1 class="text-9xl font-black mb-6 tracking-tighter">
+        <!-- Вибір класу -->
+        <div id="menu-view" class="flex-1 flex flex-col items-center justify-center p-6 text-center overflow-y-auto">
+            <h1 class="text-6xl md:text-8xl font-black mb-4 tracking-tighter">
                 <span class="text-white">WHEEL</span><br>
                 <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">FORTUNE</span>
             </h1>
-            <p class="text-3xl text-slate-400 mb-20 font-medium">Оберіть ваш клас для яскравої гри</p>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-10 w-full max-w-7xl" id="class-grid"></div>
+            <p class="text-xl text-slate-400 mb-10">Оберіть клас</p>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 w-full max-w-5xl" id="class-grid"></div>
         </div>
 
-        <div id="game-view" class="hidden flex-1 flex flex-row overflow-hidden p-10 gap-10">
-            <div class="w-80 glass-panel p-8 flex flex-col">
-                <h3 class="text-lg font-black text-indigo-400 uppercase mb-8 tracking-widest text-center">Черга: <span id="count-pending" class="text-white">0</span></h3>
-                <div id="list-pending" class="flex-1 overflow-y-auto space-y-4 custom-scroll pr-3"></div>
+        <!-- Гра -->
+        <div id="game-view" class="hidden flex-1 flex flex-row overflow-hidden p-4 md:p-6 gap-4">
+            <!-- Ліва панель (Черга) -->
+            <div class="w-64 glass-panel p-4 flex flex-col shrink-0">
+                <h3 class="text-sm font-black text-indigo-400 uppercase mb-4 tracking-widest text-center">Черга (<span id="count-pending">0</span>)</h3>
+                <div id="list-pending" class="flex-1 overflow-y-auto space-y-2 custom-scroll text-sm"></div>
             </div>
 
-            <div class="flex-1 flex flex-col items-center justify-center">
-                <div class="game-wheel-area mb-12">
+            <!-- Центр (Колесо) -->
+            <div class="flex-1 flex flex-col items-center justify-center min-w-0">
+                <div class="game-wheel-area">
                     <div class="wheel-marker"></div>
                     <div class="wheel-container" id="wheel-wrapper">
                         <canvas id="wheel-canvas"></canvas>
                     </div>
                 </div>
                 
-                <button id="spin-btn" onclick="spinWheel()" class="btn-gradient text-white px-32 py-10 rounded-full font-black text-6xl transform -translate-y-6">
+                <button id="spin-btn" onclick="spinWheel()" class="btn-gradient text-white px-12 md:px-20 py-5 rounded-full font-black text-2xl md:text-4xl mt-4 z-20">
                     КРУТИТИ
                 </button>
             </div>
 
-            <div class="w-[450px] glass-panel p-8 flex flex-col">
-                <h3 class="text-lg font-black text-emerald-400 uppercase mb-8 tracking-widest text-center">Відповіли: <span id="count-done" class="text-white">0</span></h3>
-                <div id="list-done" class="flex-1 overflow-y-auto space-y-6 custom-scroll pr-3"></div>
+            <!-- Права панель (Зірки) -->
+            <div class="w-80 glass-panel p-4 flex flex-col shrink-0">
+                <h3 class="text-sm font-black text-emerald-400 uppercase mb-4 tracking-widest text-center">Успіхи (<span id="count-done">0</span>)</h3>
+                <div id="list-done" class="flex-1 overflow-y-auto space-y-4 custom-scroll pr-1"></div>
             </div>
         </div>
     </div>
@@ -216,7 +230,7 @@
                 if (audioCtx.state === 'suspended') {
                     audioCtx.resume();
                 }
-            } catch (e) { console.warn("Audio Context init failed"); }
+            } catch (e) {}
         }
 
         function playTickSound() {
@@ -233,10 +247,11 @@
             } catch(e) {}
         }
 
+        // Генерація кнопок вибору класу
         const grid = document.getElementById('class-grid');
         CLASSES.forEach(c => {
             const btn = document.createElement('button');
-            btn.className = "bg-white/10 border border-white/20 p-12 rounded-[3.5rem] shadow-2xl hover:bg-white/20 hover:scale-105 transition-all font-black text-5xl text-white";
+            btn.className = "bg-white/10 border border-white/20 p-6 rounded-3xl shadow-xl hover:bg-white/20 hover:scale-105 transition-all font-black text-2xl text-white";
             btn.innerText = c;
             btn.onclick = () => {
                 initAudio();
@@ -259,7 +274,7 @@
                 const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S\w\W]*)\);/)[1]);
                 state.pending = json.table.rows
                     .map(r => r.c[0]?.v)
-                    .filter(v => v && !["Ім'я", "ПІБ", "Учень"].includes(v));
+                    .filter(v => v && !["Ім'я", "ПІБ", "Учень", "Прізвище"].some(forbidden => v.includes(forbidden)));
                 updateUI();
             } catch (e) {
                 state.pending = ["Помилка"];
@@ -270,23 +285,23 @@
         function updateUI() {
             const pList = document.getElementById('list-pending');
             pList.innerHTML = state.pending.map(name => `
-                <div class="bg-white/5 p-5 rounded-3xl text-xl font-bold text-white/80 border border-white/10">${name}</div>
+                <div class="bg-white/5 p-3 rounded-xl text-sm font-bold text-white/80 border border-white/5 truncate">${name}</div>
             `).join('');
             document.getElementById('count-pending').innerText = state.pending.length;
 
             const dList = document.getElementById('list-done');
             dList.innerHTML = state.done.slice().reverse().map(s => `
-                <div class="bg-white/10 p-6 rounded-[2.5rem] border border-white/10 shadow-lg">
-                    <div class="flex justify-between items-center mb-4">
-                        <span class="font-black text-white text-2xl truncate w-56">${s.name}</span>
-                        <div class="flex gap-3">
-                            <button onclick="changeStar('${s.name}', -1)" class="bg-white/10 w-12 h-12 rounded-2xl flex items-center justify-center font-black text-3xl text-white/50">-</button>
-                            <button onclick="changeStar('${s.name}', 1)" class="bg-indigo-500 w-12 h-12 rounded-2xl flex items-center justify-center font-black text-3xl text-white shadow-lg">+</button>
+                <div class="bg-white/10 p-4 rounded-2xl border border-white/10 shadow-sm">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-bold text-white text-sm truncate w-40">${s.name}</span>
+                        <div class="flex gap-2">
+                            <button onclick="changeStar('${s.name}', -1)" class="bg-white/10 w-8 h-8 rounded-lg flex items-center justify-center text-white/50">-</button>
+                            <button onclick="changeStar('${s.name}', 1)" class="bg-indigo-500 w-8 h-8 rounded-lg flex items-center justify-center text-white">+</button>
                         </div>
                     </div>
-                    <div class="grid grid-cols-6 gap-2">
+                    <div class="flex flex-wrap gap-1">
                         ${Array.from({length: 12}).map((_, i) => `
-                            <span class="text-3xl ${s.stars > i ? 'star-on' : 'star-off'}">★</span>
+                            <span class="text-lg ${s.stars > i ? 'star-on' : 'star-off'}">★</span>
                         `).join('')}
                     </div>
                 </div>
@@ -308,7 +323,7 @@
             const slice = (Math.PI * 2) / state.pending.length;
             const centerX = size / 2;
             const centerY = size / 2;
-            const radius = size / 2 - 30;
+            const radius = size / 2 - 20;
 
             state.pending.forEach((name, i) => {
                 const angle = i * slice;
@@ -317,8 +332,7 @@
                 ctx.moveTo(centerX, centerY);
                 ctx.arc(centerX, centerY, radius, angle, angle + slice);
                 ctx.fill();
-                ctx.strokeStyle = "rgba(255,255,255,0.15)";
-                ctx.lineWidth = 2;
+                ctx.strokeStyle = "rgba(255,255,255,0.1)";
                 ctx.stroke();
 
                 ctx.save();
@@ -326,14 +340,14 @@
                 ctx.rotate(angle + slice / 2);
                 ctx.textAlign = "right";
                 ctx.fillStyle = "white";
-                ctx.font = "bold 40px Inter";
-                const displayName = name.length > 18 ? name.substring(0, 16) + '..' : name;
-                ctx.fillText(displayName, radius - 80, 15);
+                ctx.font = "bold 32px Inter";
+                const displayName = name.length > 20 ? name.substring(0, 18) + '..' : name;
+                ctx.fillText(displayName, radius - 60, 10);
                 ctx.restore();
             });
             
             ctx.beginPath();
-            ctx.arc(centerX, centerY, 50, 0, Math.PI * 2);
+            ctx.arc(centerX, centerY, 40, 0, Math.PI * 2);
             ctx.fillStyle = "white";
             ctx.fill();
         }
@@ -342,21 +356,18 @@
             initAudio();
             const spinBtn = document.getElementById('spin-btn');
             
-            // Запобіжник: якщо колесо крутиться або список порожній - вихід
             if (state.isSpinning || state.pending.length === 0) return;
 
-            // Очищуємо будь-які старі інтервали перед початком
             if (activeTickInterval) clearInterval(activeTickInterval);
             
             state.isSpinning = true;
             spinBtn.disabled = true;
-            spinBtn.innerText = "КРУТИМО...";
+            spinBtn.innerText = "ЧЕКАЙТЕ...";
 
             const extraDegrees = 3600 + Math.random() * 3600;
             state.rotation += extraDegrees;
             
             const wrapper = document.getElementById('wheel-wrapper');
-            // Скидаємо анімацію перед застосуванням нової ротації
             wrapper.style.transition = 'transform 5s cubic-bezier(0.1, 0, 0.1, 1)';
             wrapper.style.transform = `rotate(${state.rotation}deg)`;
 
@@ -364,10 +375,6 @@
             const sliceDeg = 360 / state.pending.length;
 
             activeTickInterval = setInterval(() => {
-                if (!state.isSpinning) {
-                    clearInterval(activeTickInterval);
-                    return;
-                }
                 const style = window.getComputedStyle(wrapper);
                 const matrix = new DOMMatrixReadOnly(style.transform);
                 const currentAngle = Math.atan2(matrix.m12, matrix.m11) * (180 / Math.PI);
@@ -377,7 +384,7 @@
                     playTickSound();
                     lastTickSlice = currentSlice;
                 }
-            }, 40);
+            }, 50);
 
             setTimeout(() => {
                 clearInterval(activeTickInterval);
@@ -385,7 +392,6 @@
                 state.currentWinner = state.pending[sectorIndex];
                 document.getElementById('winner-name').innerText = state.currentWinner;
                 document.getElementById('modal-overlay').style.display = 'flex';
-                // Кнопка залишається disabled до закриття модалки
             }, 5100);
         }
 
@@ -416,16 +422,25 @@
             }
         }
         
-        // Посилений "сторожовий пес" - перевірка щосекунди для швидкої реакції на фрізи
-        setInterval(() => {
-            const overlayVisible = document.getElementById('modal-overlay').style.display === 'flex';
-            const spinBtn = document.getElementById('spin-btn');
-            
-            if (!state.isSpinning && !overlayVisible && spinBtn.disabled) {
+        // Автоматичне відновлення при зміні масштабу або простої
+        window.addEventListener('resize', () => {
+            if (!state.isSpinning && document.getElementById('modal-overlay').style.display !== 'flex') {
+                const spinBtn = document.getElementById('spin-btn');
                 spinBtn.disabled = false;
                 spinBtn.innerText = "КРУТИТИ";
             }
-        }, 1000);
+        });
+
+        setInterval(() => {
+            const overlayVisible = document.getElementById('modal-overlay').style.display === 'flex';
+            if (!state.isSpinning && !overlayVisible) {
+                const spinBtn = document.getElementById('spin-btn');
+                if (spinBtn.disabled) {
+                    spinBtn.disabled = false;
+                    spinBtn.innerText = "КРУТИТИ";
+                }
+            }
+        }, 1500);
     </script>
 </body>
 </html>
