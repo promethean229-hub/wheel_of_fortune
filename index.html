@@ -15,7 +15,7 @@
 
         body { 
             font-family: 'Inter', sans-serif; 
-            background: #0f172a; /* Темний глибокий фон */
+            background: #0f172a; 
             background-image: 
                 radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
                 radial-gradient(at 100% 100%, rgba(244, 63, 94, 0.15) 0px, transparent 50%);
@@ -26,7 +26,6 @@
 
         h1, h2, .font-brand { font-family: 'Montserrat', sans-serif; }
 
-        /* Анімоване сяйво навколо колеса */
         .game-wheel-area {
             position: relative;
             width: min(82vw, 82vh);
@@ -54,7 +53,6 @@
             box-shadow: 0 0 40px rgba(0,0,0,0.5);
         }
 
-        /* Стилізований маркер */
         .wheel-marker {
             position: absolute;
             top: -20px;
@@ -75,7 +73,6 @@
             clip-path: polygon(50% 100%, 0 0, 100% 0);
         }
 
-        /* Картки учнів зі скляним ефектом */
         .glass-panel {
             background: rgba(255, 255, 255, 0.07);
             backdrop-filter: blur(12px);
@@ -86,7 +83,6 @@
         .star-on { color: #fbbf24; filter: drop-shadow(0 0 5px #fbbf24); }
         .star-off { color: rgba(255,255,255,0.1); }
 
-        /* Модальне вікно */
         #modal-overlay {
             position: fixed;
             inset: 0;
@@ -154,14 +150,12 @@
     </div>
 
     <div id="app" class="flex-1 flex flex-col h-full">
-        <!-- Шапка -->
         <div id="header" class="hidden flex justify-between items-center px-12 py-8 bg-white/5 border-b border-white/10">
             <button onclick="location.reload()" class="font-black text-2xl text-white/40 hover:text-indigo-400 transition-colors">← КЛАСИ</button>
             <h1 id="class-title" class="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">7-А</h1>
             <div class="w-40"></div>
         </div>
 
-        <!-- Головне меню -->
         <div id="menu-view" class="flex-1 flex flex-col items-center justify-center p-10 text-center">
             <h1 class="text-9xl font-black mb-6 tracking-tighter">
                 <span class="text-white">WHEEL</span><br>
@@ -171,16 +165,12 @@
             <div class="grid grid-cols-2 md:grid-cols-4 gap-10 w-full max-w-7xl" id="class-grid"></div>
         </div>
 
-        <!-- Ігрове поле -->
         <div id="game-view" class="hidden flex-1 flex flex-row overflow-hidden p-10 gap-10">
-            
-            <!-- Очікування -->
             <div class="w-80 glass-panel p-8 flex flex-col">
                 <h3 class="text-lg font-black text-indigo-400 uppercase mb-8 tracking-widest text-center">Черга: <span id="count-pending" class="text-white">0</span></h3>
                 <div id="list-pending" class="flex-1 overflow-y-auto space-y-4 custom-scroll pr-3"></div>
             </div>
 
-            <!-- Колесо -->
             <div class="flex-1 flex flex-col items-center justify-center">
                 <div class="game-wheel-area mb-12">
                     <div class="wheel-marker"></div>
@@ -194,7 +184,6 @@
                 </button>
             </div>
 
-            <!-- Успіхи -->
             <div class="w-[450px] glass-panel p-8 flex flex-col">
                 <h3 class="text-lg font-black text-emerald-400 uppercase mb-8 tracking-widest text-center">Відповіли: <span id="count-done" class="text-white">0</span></h3>
                 <div id="list-done" class="flex-1 overflow-y-auto space-y-6 custom-scroll pr-3"></div>
@@ -217,13 +206,17 @@
         };
 
         let audioCtx;
+        let activeTickInterval = null;
+
         function initAudio() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+            } catch (e) { console.warn("Audio Context init failed"); }
         }
 
         function playTickSound() {
@@ -237,7 +230,7 @@
                 osc.connect(gain).connect(audioCtx.destination);
                 osc.start();
                 osc.stop(audioCtx.currentTime + 0.05);
-            } catch(e) { console.error("Audio error", e); }
+            } catch(e) {}
         }
 
         const grid = document.getElementById('class-grid');
@@ -269,7 +262,7 @@
                     .filter(v => v && !["Ім'я", "ПІБ", "Учень"].includes(v));
                 updateUI();
             } catch (e) {
-                state.pending = ["Помилка завантаження"];
+                state.pending = ["Помилка"];
                 updateUI();
             }
         }
@@ -324,7 +317,6 @@
                 ctx.moveTo(centerX, centerY);
                 ctx.arc(centerX, centerY, radius, angle, angle + slice);
                 ctx.fill();
-
                 ctx.strokeStyle = "rgba(255,255,255,0.15)";
                 ctx.lineWidth = 2;
                 ctx.stroke();
@@ -335,8 +327,6 @@
                 ctx.textAlign = "right";
                 ctx.fillStyle = "white";
                 ctx.font = "bold 40px Inter";
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = "rgba(0,0,0,0.5)";
                 const displayName = name.length > 18 ? name.substring(0, 16) + '..' : name;
                 ctx.fillText(displayName, radius - 80, 15);
                 ctx.restore();
@@ -346,22 +336,19 @@
             ctx.arc(centerX, centerY, 50, 0, Math.PI * 2);
             ctx.fillStyle = "white";
             ctx.fill();
-            ctx.lineWidth = 15;
-            ctx.strokeStyle = "#1e293b";
-            ctx.stroke();
         }
 
         function spinWheel() {
-            initAudio(); // Пробуджуємо звук
-            if (state.isSpinning || state.pending.length === 0) {
-                // Якщо раптом кнопка неактивна але ми сюди потрапили - примусово відновлюємо її
-                document.getElementById('spin-btn').disabled = false;
-                document.getElementById('spin-btn').innerText = "КРУТИТИ";
-                return;
-            }
+            initAudio();
+            const spinBtn = document.getElementById('spin-btn');
+            
+            // Запобіжник: якщо колесо крутиться або список порожній - вихід
+            if (state.isSpinning || state.pending.length === 0) return;
+
+            // Очищуємо будь-які старі інтервали перед початком
+            if (activeTickInterval) clearInterval(activeTickInterval);
             
             state.isSpinning = true;
-            const spinBtn = document.getElementById('spin-btn');
             spinBtn.disabled = true;
             spinBtn.innerText = "КРУТИМО...";
 
@@ -369,13 +356,18 @@
             state.rotation += extraDegrees;
             
             const wrapper = document.getElementById('wheel-wrapper');
+            // Скидаємо анімацію перед застосуванням нової ротації
+            wrapper.style.transition = 'transform 5s cubic-bezier(0.1, 0, 0.1, 1)';
             wrapper.style.transform = `rotate(${state.rotation}deg)`;
 
             let lastTickSlice = -1;
             const sliceDeg = 360 / state.pending.length;
 
-            const tickInterval = setInterval(() => {
-                if (!state.isSpinning) { clearInterval(tickInterval); return; }
+            activeTickInterval = setInterval(() => {
+                if (!state.isSpinning) {
+                    clearInterval(activeTickInterval);
+                    return;
+                }
                 const style = window.getComputedStyle(wrapper);
                 const matrix = new DOMMatrixReadOnly(style.transform);
                 const currentAngle = Math.atan2(matrix.m12, matrix.m11) * (180 / Math.PI);
@@ -388,11 +380,12 @@
             }, 40);
 
             setTimeout(() => {
-                clearInterval(tickInterval);
+                clearInterval(activeTickInterval);
                 const sectorIndex = Math.floor(((360 - (state.rotation % 360)) + 270) % 360 / sliceDeg) % state.pending.length;
                 state.currentWinner = state.pending[sectorIndex];
                 document.getElementById('winner-name').innerText = state.currentWinner;
                 document.getElementById('modal-overlay').style.display = 'flex';
+                // Кнопка залишається disabled до закриття модалки
             }, 5100);
         }
 
@@ -407,7 +400,6 @@
                 state.pending = state.pending.filter(n => n !== state.currentWinner);
             }
 
-            // ПРИМУСОВЕ СКИНАННЯ СТАНУ
             state.isSpinning = false;
             spinBtn.disabled = false;
             spinBtn.innerText = "КРУТИТИ";
@@ -424,16 +416,16 @@
             }
         }
         
-        // Додатковий запобіжник: перевірка кожні 10 секунд, чи не "зависла" кнопка
+        // Посилений "сторожовий пес" - перевірка щосекунди для швидкої реакції на фрізи
         setInterval(() => {
-            if (!state.isSpinning && document.getElementById('modal-overlay').style.display !== 'flex') {
-                const spinBtn = document.getElementById('spin-btn');
-                if (spinBtn.disabled) {
-                    spinBtn.disabled = false;
-                    spinBtn.innerText = "КРУТИТИ";
-                }
+            const overlayVisible = document.getElementById('modal-overlay').style.display === 'flex';
+            const spinBtn = document.getElementById('spin-btn');
+            
+            if (!state.isSpinning && !overlayVisible && spinBtn.disabled) {
+                spinBtn.disabled = false;
+                spinBtn.innerText = "КРУТИТИ";
             }
-        }, 10000);
+        }, 1000);
     </script>
 </body>
 </html>
