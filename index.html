@@ -3,152 +3,195 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Колесо фортуни - Повна Версія</title>
+    <title>Колесо фортуни - Super Colorful</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Inter:wght@400;700;900&display=swap');
         
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background: #f8fafc;
-            overflow: hidden;
-            height: 100vh;
+        :root {
+            --primary-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --accent-gradient: linear-gradient(135deg, #f43f5e 0%, #fb923c 100%);
         }
 
-        /* Колесо */
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: #0f172a; /* Темний глибокий фон */
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(244, 63, 94, 0.15) 0px, transparent 50%);
+            overflow: hidden;
+            height: 100vh;
+            color: white;
+        }
+
+        h1, h2, .font-brand { font-family: 'Montserrat', sans-serif; }
+
+        /* Анімоване сяйво навколо колеса */
+        .game-wheel-area {
+            position: relative;
+            width: min(82vw, 82vh);
+            height: min(82vw, 82vh);
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+            padding: 20px;
+            box-shadow: 0 0 80px rgba(99, 102, 241, 0.3);
+        }
+
         .wheel-container { 
             position: relative; 
-            width: min(70vw, 55vh); 
-            height: min(70vw, 55vh);
+            width: 100%;
+            height: 100%;
             transition: transform 5s cubic-bezier(0.1, 0, 0.1, 1);
+            z-index: 10;
         }
 
         #wheel-canvas {
             width: 100%;
             height: 100%;
             border-radius: 50%;
-            border: 10px solid white;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            border: 10px solid #ffffff;
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
         }
 
+        /* Стилізований маркер */
         .wheel-marker {
             position: absolute;
             top: -20px;
             left: 50%;
             transform: translateX(-50%);
-            width: 40px;
-            height: 50px;
+            width: 70px;
+            height: 90px;
+            background: #ffffff;
+            clip-path: polygon(50% 100%, 0 0, 100% 0);
+            z-index: 50;
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5));
+        }
+        .wheel-marker::after {
+            content: '';
+            position: absolute;
+            top: 5px; left: 10px; right: 10px; bottom: 30px;
             background: #ef4444;
             clip-path: polygon(50% 100%, 0 0, 100% 0);
-            z-index: 20;
         }
 
-        /* Зірки */
-        .star-grid {
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            gap: 2px;
+        /* Картки учнів зі скляним ефектом */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 3rem;
         }
-        .star { font-size: 1.2rem; line-height: 1; }
-        .star-on { color: #f59e0b; }
-        .star-off { color: #e2e8f0; }
 
-        /* Картка запрошення */
+        .star-on { color: #fbbf24; filter: drop-shadow(0 0 5px #fbbf24); }
+        .star-off { color: rgba(255,255,255,0.1); }
+
+        /* Модальне вікно */
         #modal-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(15, 23, 42, 0.9);
-            backdrop-filter: blur(8px);
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(20px);
             z-index: 9999;
             display: none;
             align-items: center;
             justify-content: center;
-            padding: 20px;
         }
 
-        .invite-card {
+        .winner-card {
             background: white;
-            border-radius: 3rem;
-            padding: 3rem;
+            border-radius: 5rem;
+            padding: 5rem;
             width: 100%;
-            max-width: 600px;
+            max-width: 900px;
             text-align: center;
-            border: 8px solid #4f46e5;
-            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            color: #1e293b;
+            box-shadow: 0 0 100px rgba(99, 102, 241, 0.6);
+            border: 15px solid #6366f1;
         }
 
-        @keyframes popIn {
-            0% { transform: scale(0.8); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
+        .btn-gradient {
+            background: var(--primary-gradient);
+            box-shadow: 0 10px 0 #4338ca;
+            transition: all 0.2s;
+        }
+        .btn-gradient:active {
+            transform: translateY(10px);
+            box-shadow: 0 0 0 #4338ca;
         }
 
-        .custom-scroll::-webkit-scrollbar { width: 4px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar { width: 8px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
     </style>
 </head>
 <body class="flex flex-col">
 
-    <!-- Модалка (Карточка) -->
     <div id="modal-overlay">
-        <div class="invite-card">
-            <p class="text-indigo-500 font-black uppercase tracking-widest mb-2">Запрошуємо до відповіді</p>
-            <h2 id="winner-name" class="text-5xl font-black text-slate-800 mb-8 leading-tight">---</h2>
+        <div class="winner-card">
+            <p class="text-indigo-600 font-black uppercase tracking-widest text-2xl mb-6">Зірка уроку:</p>
+            <h2 id="winner-name" class="text-8xl font-black mb-16 leading-tight break-words">Ім'я</h2>
             
-            <div class="flex flex-col gap-4">
-                <button onclick="handleAction('go')" class="w-full bg-indigo-600 text-white py-6 rounded-3xl font-black text-3xl hover:bg-indigo-700 active:scale-95 transition-all shadow-xl border-b-8 border-indigo-900">
-                    Я ЙДУ! 🎓
+            <div class="flex flex-col gap-8">
+                <button onclick="handleAction('go')" class="btn-gradient w-full text-white py-10 rounded-[3.5rem] font-black text-5xl hover:brightness-110 active:scale-95">
+                    ВІДПОВІДАЄ! 🎓
                 </button>
-                <div class="grid grid-cols-2 gap-4">
-                    <button onclick="handleAction('reject')" class="bg-slate-200 text-slate-700 py-4 rounded-2xl font-black text-lg hover:bg-slate-300 active:scale-95 border-b-4 border-slate-400">
-                        ВІДМОВЛЯЮСЯ ❌
+                <div class="grid grid-cols-2 gap-8">
+                    <button onclick="handleAction('reject')" class="bg-slate-200 text-slate-700 py-8 rounded-3xl font-black text-3xl hover:bg-slate-300 border-b-8 border-slate-400">
+                        Спробувати ще 🔄
                     </button>
-                    <button onclick="handleAction('absent')" class="bg-slate-100 text-slate-400 py-4 rounded-2xl font-black text-lg hover:bg-slate-200 active:scale-95 border-b-4 border-slate-300">
-                        ВІДСУТНІЙ 👤
+                    <button onclick="handleAction('absent')" class="bg-red-50 text-red-400 py-8 rounded-3xl font-black text-3xl hover:bg-red-100 border-b-8 border-red-200">
+                        Відсутній 👤
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Основний інтерфейс -->
     <div id="app" class="flex-1 flex flex-col h-full">
         <!-- Шапка -->
-        <div id="header" class="hidden flex justify-between items-center px-8 py-4 bg-white border-b border-slate-200">
-            <button onclick="location.reload()" class="font-bold text-slate-500 hover:text-indigo-600">← НАЗАД</button>
-            <h1 id="class-title" class="text-2xl font-black text-slate-800">Клас</h1>
-            <div class="w-20"></div>
+        <div id="header" class="hidden flex justify-between items-center px-12 py-8 bg-white/5 border-b border-white/10">
+            <button onclick="location.reload()" class="font-black text-2xl text-white/40 hover:text-indigo-400 transition-colors">← КЛАСИ</button>
+            <h1 id="class-title" class="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">7-А</h1>
+            <div class="w-40"></div>
         </div>
 
-        <!-- Вибір класу (Головна) -->
-        <div id="menu-view" class="flex-1 flex flex-col items-center justify-center p-6">
-            <h1 class="text-5xl font-black text-slate-800 mb-2">Колесо <span class="text-indigo-600">фортуни</span></h1>
-            <p class="text-slate-400 mb-10">Оберіть клас для початку уроку</p>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-4xl" id="class-grid"></div>
+        <!-- Головне меню -->
+        <div id="menu-view" class="flex-1 flex flex-col items-center justify-center p-10 text-center">
+            <h1 class="text-9xl font-black mb-6 tracking-tighter">
+                <span class="text-white">WHEEL</span><br>
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">FORTUNE</span>
+            </h1>
+            <p class="text-3xl text-slate-400 mb-20 font-medium">Оберіть ваш клас для яскравої гри</p>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-10 w-full max-w-7xl" id="class-grid"></div>
         </div>
 
-        <!-- Робоча зона -->
-        <div id="game-view" class="hidden flex-1 flex flex-row overflow-hidden p-6 gap-6">
-            <!-- Список Черги -->
-            <div class="w-64 bg-white/50 rounded-[2rem] p-5 flex flex-col border border-white">
-                <h3 class="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">У черзі: <span id="count-pending">0</span></h3>
-                <div id="list-pending" class="flex-1 overflow-y-auto space-y-2 custom-scroll"></div>
+        <!-- Ігрове поле -->
+        <div id="game-view" class="hidden flex-1 flex flex-row overflow-hidden p-10 gap-10">
+            
+            <!-- Очікування -->
+            <div class="w-80 glass-panel p-8 flex flex-col">
+                <h3 class="text-lg font-black text-indigo-400 uppercase mb-8 tracking-widest text-center">Черга: <span id="count-pending" class="text-white">0</span></h3>
+                <div id="list-pending" class="flex-1 overflow-y-auto space-y-4 custom-scroll pr-3"></div>
             </div>
 
             <!-- Колесо -->
             <div class="flex-1 flex flex-col items-center justify-center">
-                <div class="wheel-container mb-8" id="wheel-wrapper">
+                <div class="game-wheel-area mb-12">
                     <div class="wheel-marker"></div>
-                    <canvas id="wheel-canvas"></canvas>
+                    <div class="wheel-container" id="wheel-wrapper">
+                        <canvas id="wheel-canvas"></canvas>
+                    </div>
                 </div>
-                <button id="spin-btn" onclick="spinWheel()" class="bg-indigo-600 text-white px-16 py-6 rounded-[2.5rem] font-black text-3xl shadow-2xl hover:bg-indigo-700 active:scale-95 transition-all border-b-8 border-indigo-900">
+                
+                <button id="spin-btn" onclick="spinWheel()" class="btn-gradient text-white px-32 py-10 rounded-full font-black text-6xl transform -translate-y-6">
                     КРУТИТИ
                 </button>
             </div>
 
-            <!-- Список Успіхів -->
-            <div class="w-80 bg-white/50 rounded-[2rem] p-5 flex flex-col border border-white">
-                <h3 class="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">Успіхи: <span id="count-done">0</span></h3>
-                <div id="list-done" class="flex-1 overflow-y-auto space-y-3 custom-scroll"></div>
+            <!-- Успіхи -->
+            <div class="w-[450px] glass-panel p-8 flex flex-col">
+                <h3 class="text-lg font-black text-emerald-400 uppercase mb-8 tracking-widest text-center">Відповіли: <span id="count-done" class="text-white">0</span></h3>
+                <div id="list-done" class="flex-1 overflow-y-auto space-y-6 custom-scroll pr-3"></div>
             </div>
         </div>
     </div>
@@ -156,7 +199,8 @@
     <script>
         const SPREADSHEET_ID = '1_pq4ymribVOGorbZTH6D9vBt1CZwtdtLLIR6dpmgync';
         const CLASSES = ["7-А", "7-Б", "7-В", "7-Г", "7-Ж", "8-А", "8-Д", "10-А"];
-        const COLORS = ['#6366f1', '#f43f5e', '#10b981', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'];
+        // Більш насичені кольори для сегментів
+        const COLORS = ['#6366f1', '#f43f5e', '#10b981', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#a855f7'];
 
         let state = {
             currentClass: '',
@@ -166,45 +210,23 @@
             rotation: 0
         };
 
-        // Аудіо-движок для синтезу звуків
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
         function playTickSound() {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
+            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
+            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            osc.connect(gain).connect(audioCtx.destination);
             osc.start();
-            osc.stop(audioCtx.currentTime + 0.1);
+            osc.stop(audioCtx.currentTime + 0.05);
         }
 
-        function playWinSound() {
-            const frequencies = [523.25, 659.25, 783.99, 1046.50]; // Акорд C-major
-            frequencies.forEach((f, i) => {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(f, audioCtx.currentTime + (i * 0.1));
-                gain.gain.setValueAtTime(0, audioCtx.currentTime + (i * 0.1));
-                gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + (i * 0.1) + 0.05);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.start(audioCtx.currentTime + (i * 0.1));
-                osc.stop(audioCtx.currentTime + 1.5);
-            });
-        }
-
-        // Ініціалізація кнопок класів
         const grid = document.getElementById('class-grid');
         CLASSES.forEach(c => {
             const btn = document.createElement('button');
-            btn.className = "bg-white p-6 rounded-3xl shadow-lg hover:shadow-indigo-100 hover:scale-105 transition-all font-black text-xl text-slate-700 border-b-4 border-slate-200";
+            btn.className = "bg-white/10 border border-white/20 p-12 rounded-[3.5rem] shadow-2xl hover:bg-white/20 hover:scale-105 transition-all font-black text-5xl text-white";
             btn.innerText = c;
             btn.onclick = () => {
                 if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -227,35 +249,34 @@
                 const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S\w\W]*)\);/)[1]);
                 state.pending = json.table.rows
                     .map(r => r.c[0]?.v)
-                    .filter(v => v && v !== "Ім'я" && v !== "ПІБ");
+                    .filter(v => v && !["Ім'я", "ПІБ", "Учень"].includes(v));
                 updateUI();
             } catch (e) {
-                alert("Помилка завантаження");
+                state.pending = ["Помилка завантаження"];
+                updateUI();
             }
         }
 
         function updateUI() {
-            // Оновлення черги
             const pList = document.getElementById('list-pending');
             pList.innerHTML = state.pending.map(name => `
-                <div class="bg-white/80 p-3 rounded-xl text-xs font-bold text-slate-600 border border-slate-100">${name}</div>
+                <div class="bg-white/5 p-5 rounded-3xl text-xl font-bold text-white/80 border border-white/10">${name}</div>
             `).join('');
             document.getElementById('count-pending').innerText = state.pending.length;
 
-            // Оновлення успіхів
             const dList = document.getElementById('list-done');
             dList.innerHTML = state.done.slice().reverse().map(s => `
-                <div class="bg-white p-4 rounded-2xl shadow-sm border border-indigo-50">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="font-black text-slate-700 text-sm truncate w-32">${s.name}</span>
-                        <div class="flex gap-1">
-                            <button onclick="changeStar('${s.name}', -1)" class="bg-slate-100 w-6 h-6 rounded flex items-center justify-center font-bold text-slate-500">-</button>
-                            <button onclick="changeStar('${s.name}', 1)" class="bg-indigo-600 w-6 h-6 rounded flex items-center justify-center font-bold text-white">+</button>
+                <div class="bg-white/10 p-6 rounded-[2.5rem] border border-white/10 shadow-lg">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="font-black text-white text-2xl truncate w-56">${s.name}</span>
+                        <div class="flex gap-3">
+                            <button onclick="changeStar('${s.name}', -1)" class="bg-white/10 w-12 h-12 rounded-2xl flex items-center justify-center font-black text-3xl text-white/50">-</button>
+                            <button onclick="changeStar('${s.name}', 1)" class="bg-indigo-500 w-12 h-12 rounded-2xl flex items-center justify-center font-black text-3xl text-white shadow-lg">+</button>
                         </div>
                     </div>
-                    <div class="star-grid">
+                    <div class="grid grid-cols-6 gap-2">
                         ${Array.from({length: 12}).map((_, i) => `
-                            <span class="star ${s.stars > i ? 'star-on' : 'star-off'}">★</span>
+                            <span class="text-3xl ${s.stars > i ? 'star-on' : 'star-off'}">★</span>
                         `).join('')}
                     </div>
                 </div>
@@ -268,7 +289,7 @@
         function drawWheel() {
             const canvas = document.getElementById('wheel-canvas');
             const ctx = canvas.getContext('2d');
-            const size = 500;
+            const size = 1200;
             canvas.width = size;
             canvas.height = size;
 
@@ -277,7 +298,7 @@
             const slice = (Math.PI * 2) / state.pending.length;
             const centerX = size / 2;
             const centerY = size / 2;
-            const radius = size / 2 - 10;
+            const radius = size / 2 - 30;
 
             state.pending.forEach((name, i) => {
                 const angle = i * slice;
@@ -287,89 +308,84 @@
                 ctx.arc(centerX, centerY, radius, angle, angle + slice);
                 ctx.fill();
 
-                // Текст
+                ctx.strokeStyle = "rgba(255,255,255,0.15)";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
                 ctx.save();
                 ctx.translate(centerX, centerY);
                 ctx.rotate(angle + slice / 2);
                 ctx.textAlign = "right";
                 ctx.fillStyle = "white";
-                ctx.font = "bold 12px Inter";
-                const displayName = name.length > 12 ? name.substring(0, 11) + '..' : name;
-                ctx.fillText(displayName, radius - 35, 5);
+                ctx.font = "bold 40px Inter";
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = "rgba(0,0,0,0.5)";
+                const displayName = name.length > 18 ? name.substring(0, 16) + '..' : name;
+                ctx.fillText(displayName, radius - 80, 15);
                 ctx.restore();
             });
+            
+            // Центральне коло
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 50, 0, Math.PI * 2);
+            ctx.fillStyle = "white";
+            ctx.fill();
+            ctx.lineWidth = 15;
+            ctx.strokeStyle = "#1e293b";
+            ctx.stroke();
         }
-
-        let currentWinner = "";
 
         function spinWheel() {
             if (state.isSpinning || state.pending.length === 0) return;
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            
             state.isSpinning = true;
+            
+            const spinBtn = document.getElementById('spin-btn');
+            spinBtn.style.opacity = "0.3";
+            spinBtn.innerText = "КРУТИМО...";
 
-            const extraDegrees = 1800 + Math.random() * 360;
-            const startRotation = state.rotation;
+            const extraDegrees = 3600 + Math.random() * 3600;
             state.rotation += extraDegrees;
             
             const wrapper = document.getElementById('wheel-wrapper');
-            wrapper.style.transition = "transform 5s cubic-bezier(0.1, 0, 0.2, 1)";
             wrapper.style.transform = `rotate(${state.rotation}deg)`;
 
-            // Логіка звуку "тікання"
-            const numSlices = state.pending.length;
-            const sliceDeg = 360 / numSlices;
-            let lastTickSlice = Math.floor((startRotation % 360) / sliceDeg);
+            let lastTickSlice = -1;
+            const sliceDeg = 360 / state.pending.length;
 
             const tickInterval = setInterval(() => {
-                if (!state.isSpinning) {
-                    clearInterval(tickInterval);
-                    return;
-                }
-                
-                // Отримуємо поточний кут через computedStyle, щоб знати реальний стан анімації
+                if (!state.isSpinning) { clearInterval(tickInterval); return; }
                 const style = window.getComputedStyle(wrapper);
                 const matrix = new DOMMatrixReadOnly(style.transform);
                 const currentAngle = Math.atan2(matrix.m12, matrix.m11) * (180 / Math.PI);
-                const normalizedAngle = (360 - (currentAngle % 360)) % 360;
+                const normalizedAngle = (360 - (currentAngle % 360) + 270) % 360;
                 const currentSlice = Math.floor(normalizedAngle / sliceDeg);
-
                 if (currentSlice !== lastTickSlice) {
                     playTickSound();
                     lastTickSlice = currentSlice;
                 }
-            }, 50);
+            }, 40);
 
             setTimeout(() => {
                 state.isSpinning = false;
+                spinBtn.style.opacity = "1";
+                spinBtn.innerText = "КРУТИТИ";
                 clearInterval(tickInterval);
                 
-                const actualDeg = (360 - (state.rotation % 360)) % 360;
-                const index = Math.floor(actualDeg / sliceDeg);
-                currentWinner = state.pending[index];
-
-                playWinSound();
-                showModal(currentWinner);
+                const sectorIndex = Math.floor(((360 - (state.rotation % 360)) + 270) % 360 / sliceDeg) % state.pending.length;
+                state.currentWinner = state.pending[sectorIndex];
+                document.getElementById('winner-name').innerText = state.currentWinner;
+                document.getElementById('modal-overlay').style.display = 'flex';
             }, 5100);
-        }
-
-        function showModal(name) {
-            document.getElementById('winner-name').innerText = name;
-            document.getElementById('modal-overlay').style.display = 'flex';
         }
 
         window.handleAction = (type) => {
             const overlay = document.getElementById('modal-overlay');
-            
             if (type === 'go') {
-                state.done.push({ name: currentWinner, stars: 0 });
-                state.pending = state.pending.filter(n => n !== currentWinner);
+                state.done.push({ name: state.currentWinner, stars: 0 });
+                state.pending = state.pending.filter(n => n !== state.currentWinner);
             } else if (type === 'absent') {
-                state.pending = state.pending.filter(n => n !== currentWinner);
-            } else if (type === 'reject') {
-                // Нічого не робимо, учень залишається в pending
+                state.pending = state.pending.filter(n => n !== state.currentWinner);
             }
-
             overlay.style.display = 'none';
             updateUI();
         }
